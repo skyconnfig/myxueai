@@ -12,6 +12,7 @@ import { AssetType } from '../../constants/status.js'
 import { projectRepository } from '../project/project.repository.js'
 import { sceneRepository } from '../scene/scene.repository.js'
 import { assetRepository } from './asset.repository.js'
+import { estimateBufferMp3DurationSeconds, estimateMp3DurationSeconds } from '../../utils/audio-duration.js'
 
 function toAssetDto(asset: {
   id: string
@@ -212,7 +213,9 @@ export class AssetService {
   async generateVoiceForProject(
     projectId: string,
     onProgress?: (progress: number) => void,
+    options?: { force?: boolean },
   ) {
+    const force = options?.force ?? false
     const project = await projectRepository.findById(projectId)
     if (!project) throw new AppError(404, 'PROJECT_NOT_FOUND', '项目不存在')
 
@@ -222,10 +225,17 @@ export class AssetService {
 
     for (let i = 0; i < scenes.length; i++) {
       const scene = scenes[i]
-      const existingAudio = await assetRepository.findMany({ projectId, type: AssetType.AUDIO })
-      if (existingAudio.some((a) => a.sceneId === scene.id)) {
+      const existingAudio = (await assetRepository.findMany({ projectId, type: AssetType.AUDIO })).find(
+        (asset) => asset.sceneId === scene.id,
+      )
+
+      if (existingAudio && existingAudio.provider !== 'placeholder' && !force) {
         onProgress?.(Math.round(((i + 1) / scenes.length) * 100))
         continue
+      }
+
+      if (existingAudio) {
+        await assetRepository.delete(existingAudio.id)
       }
 
       const voiceText = scene.voiceText?.trim() || scene.description
@@ -248,6 +258,7 @@ export class AssetService {
           url = publicUrl(path.relative(storagePaths.root, dest))
           provider = generated.provider
           voiceMeta = generated.voiceId
+          audioDuration = estimateBufferMp3DurationSeconds(generated.buffer)
           metadata = {
             ...metadata,
             voiceId: generated.voiceId,
@@ -270,6 +281,10 @@ export class AssetService {
         provider = 'placeholder'
       }
 
+      if (provider !== 'placeholder' && fs.existsSync(dest)) {
+        audioDuration = estimateMp3DurationSeconds(dest)
+      }
+
       const asset = await assetRepository.create({
         projectId,
         sceneId: scene.id,
@@ -283,6 +298,9 @@ export class AssetService {
         voice: voiceMeta,
         language: 'zh-CN',
       })
+      if (provider !== 'placeholder' && audioDuration !== scene.duration) {
+        await sceneRepository.update(scene.id, { duration: audioDuration })
+      }
       onProgress?.(Math.round(((i + 1) / scenes.length) * 100))
     }
   }

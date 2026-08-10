@@ -68,6 +68,10 @@ export class TaskRepository {
       _count: { id: true },
     })
   }
+
+  delete(id: string) {
+    return prisma.videoTask.delete({ where: { id } })
+  }
 }
 
 export const taskRepository = new TaskRepository()

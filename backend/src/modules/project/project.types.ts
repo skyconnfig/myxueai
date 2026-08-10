@@ -16,6 +16,12 @@ export const generateScriptSchema = z.object({
   ratio: z.enum(['9:16', '16:9', '1:1']).optional(),
 })
 
+export const optimizeScriptSchema = z.object({
+  projectId: z.string().min(1),
+  sceneId: z.string().optional(),
+  style: z.string().optional(),
+})
+
 export const updateSceneSchema = z.object({
   title: z.string().optional(),
   description: z.string().optional(),
@@ -43,6 +49,7 @@ export const videoPlanSchema = z.object({
 
 export type CreateProjectInput = z.infer<typeof createProjectSchema>
 export type GenerateScriptInput = z.infer<typeof generateScriptSchema>
+export type OptimizeScriptInput = z.infer<typeof optimizeScriptSchema>
 export type UpdateSceneInput = z.infer<typeof updateSceneSchema>
 export type VideoPlan = z.infer<typeof videoPlanSchema>
 export type VideoPlanScene = z.infer<typeof videoPlanSceneSchema>

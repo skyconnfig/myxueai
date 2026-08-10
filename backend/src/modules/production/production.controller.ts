@@ -25,6 +25,15 @@ export class ProductionController {
       }
     },
   ]
+
+  regenerateVoice = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const data = await productionService.regenerateVoice(String(req.params.id))
+      return sendSuccess(res, data, 'Voice regenerated')
+    } catch (error) {
+      return next(error)
+    }
+  }
 }
 
 export const productionController = new ProductionController()

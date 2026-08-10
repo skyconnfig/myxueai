@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import {
   Mic,
   Pause,
@@ -29,6 +29,8 @@ const props = defineProps<{
   style: string
   progress: number
   hasScenes: boolean
+  isOptimizing?: boolean
+  sceneStartTime?: number
 }>()
 
 const emit = defineEmits<{
@@ -56,6 +58,113 @@ const aiActions = [
   { key: 'edit', label: '自动剪辑', icon: Scissors, emit: 'autoEdit' as const },
   { key: 'sub', label: '修改字幕', icon: Subtitles, emit: 'editSubtitles' as const },
 ]
+
+const audioEl = ref<HTMLAudioElement | null>(null)
+const hasAudio = computed(() => Boolean(props.scene?.audioUrl))
+const loadedAudioUrl = ref<string | null>(null)
+
+function localSceneTime() {
+  return Math.max(0, props.currentTime - (props.sceneStartTime ?? 0))
+}
+
+async function ensureAudioReady() {
+  const el = audioEl.value
+  const url = props.scene?.audioUrl
+  if (!el || !url) return false
+
+  if (loadedAudioUrl.value !== url) {
+    el.src = url
+    loadedAudioUrl.value = url
+    el.load()
+    await new Promise<void>((resolve) => {
+      if (el.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+        resolve()
+        return
+      }
+      const onReady = () => {
+        el.removeEventListener('canplay', onReady)
+        resolve()
+      }
+      el.addEventListener('canplay', onReady, { once: true })
+    })
+  }
+
+  const localTime = localSceneTime()
+  if (localTime <= props.scene!.duration && Math.abs(el.currentTime - localTime) > 0.2) {
+    el.currentTime = localTime
+  }
+  return localTime <= props.scene!.duration
+}
+
+async function playAudioFromUserGesture() {
+  if (props.isMuted || !props.scene?.audioUrl) return
+  const ok = await ensureAudioReady()
+  const el = audioEl.value
+  if (!ok || !el) return
+  try {
+    await el.play()
+  } catch {
+    /* browser blocked */
+  }
+}
+
+function pauseAudio() {
+  audioEl.value?.pause()
+}
+
+async function syncPlayback() {
+  const el = audioEl.value
+  if (!el || !props.scene?.audioUrl || props.isMuted) {
+    pauseAudio()
+    return
+  }
+
+  const localTime = localSceneTime()
+  if (localTime > props.scene.duration) {
+    pauseAudio()
+    return
+  }
+
+  await ensureAudioReady()
+
+  if (props.isPlaying) {
+    try {
+      await el.play()
+    } catch {
+      /* autoplay policy */
+    }
+  } else {
+    pauseAudio()
+  }
+}
+
+function togglePlay() {
+  const next = !props.isPlaying
+  emit('update:isPlaying', next)
+  if (next) {
+    void playAudioFromUserGesture()
+  } else {
+    pauseAudio()
+  }
+}
+
+watch(
+  () => [props.isPlaying, props.currentTime, props.scene?.audioUrl, props.isMuted, props.sceneStartTime] as const,
+  () => {
+    void syncPlayback()
+  },
+  { flush: 'post' },
+)
+
+watch(
+  () => props.scene?.audioUrl,
+  (url) => {
+    if (!url) {
+      loadedAudioUrl.value = null
+      pauseAudio()
+    }
+  },
+)
 </script>
 
 <template>
@@ -89,6 +198,11 @@ const aiActions = [
     </div>
 
     <div class="flex-1 flex flex-col items-center justify-center min-h-0">
+      <audio
+        ref="audioEl"
+        preload="auto"
+        class="hidden"
+      />
       <div
         v-if="scene && hasScenes"
         class="relative rounded-2xl overflow-hidden shadow-glow-purple border border-border/80 flex items-center justify-center max-h-[380px] bg-black"
@@ -99,8 +213,17 @@ const aiActions = [
         <div class="absolute top-3 left-3 px-2 py-0.5 glass-panel text-[10px] font-mono text-accent-blue rounded-lg">
           {{ scene.cameraAngle }}
         </div>
-        <div class="absolute top-3 right-3 px-2 py-0.5 glass-panel text-[10px] font-mono text-white rounded-lg">
-          {{ currentTime.toFixed(1) }}s / {{ totalDuration }}s
+        <div class="absolute top-3 right-3 flex flex-col items-end gap-1">
+          <span class="px-2 py-0.5 glass-panel text-[10px] font-mono text-white rounded-lg">
+            {{ currentTime.toFixed(1) }}s / {{ totalDuration }}s
+          </span>
+          <span
+            v-if="hasAudio"
+            class="px-2 py-0.5 glass-panel text-[10px] font-mono rounded-lg"
+            :class="isMuted ? 'text-muted' : 'text-success'"
+          >
+            {{ isMuted ? '配音已静音' : '配音已就绪' }}
+          </span>
         </div>
         <div
           v-if="showSubtitles"
@@ -121,10 +244,15 @@ const aiActions = [
           :key="action.key"
           type="button"
           class="btn-soft !h-8 !px-3 !rounded-lg !text-[11px]"
+          :disabled="action.key === 'optimize' && isOptimizing"
           @click="emit(action.emit)"
         >
-          <component :is="action.icon" class="w-3.5 h-3.5 text-accent-blue" />
-          {{ action.label }}
+          <component
+            :is="action.icon"
+            class="w-3.5 h-3.5 text-accent-blue"
+            :class="action.key === 'optimize' && isOptimizing ? 'animate-pulse' : ''"
+          />
+          {{ action.key === 'optimize' && isOptimizing ? '优化中...' : action.label }}
         </button>
       </div>
 
@@ -135,7 +263,7 @@ const aiActions = [
         <button
           type="button"
           class="btn-soft btn-soft--primary !w-9 !h-9 !p-0 !rounded-lg"
-          @click="emit('update:isPlaying', !isPlaying)"
+          @click="togglePlay"
         >
           <Pause v-if="isPlaying" class="w-4 h-4 text-accent-blue fill-current" />
           <Play v-else class="w-4 h-4 text-accent-blue fill-current ml-0.5" />

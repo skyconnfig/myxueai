@@ -23,6 +23,7 @@ const submitting = ref(false)
 
 onMounted(() => {
   void workspaceStore.loadTemplates()
+  void workspaceStore.loadSummary()
   const q = route.query
   if (typeof q.prompt === 'string') prompt.value = q.prompt
   if (typeof q.style === 'string') category.value = q.style

@@ -1,8 +1,8 @@
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onActivated, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMessage } from 'naive-ui'
-import { generateScript } from '@/api/script'
-import { startProduction } from '@/api/production'
+import { generateScript, optimizeScript } from '@/api/script'
+import { startProduction, regenerateVoice } from '@/api/production'
 import { updateScene as patchScene } from '@/api/scene'
 import { DEMO_ASSETS } from '@/data/mockData'
 import type { DemoScene } from '@/data/mockData'
@@ -26,6 +26,7 @@ function mapScene(scene: Scene): DemoScene {
     duration: scene.duration,
     cameraAngle: '特写推镜头',
     imageUrl: scene.imageUrl ?? DEFAULT_IMAGE,
+    audioUrl: scene.audioUrl ?? undefined,
     voiceoverActor: '云希 (科技专业)',
     transition: 'Fade Up',
     bgmCategory: '科技脉冲',
@@ -68,6 +69,8 @@ export function useVideoPlanStudio() {
   const aiPromptTopic = ref('')
   const aiStyle = ref('专业干货 / 深度解析')
   const isGenerating = ref(false)
+  const isOptimizing = ref(false)
+  const isRedubbing = ref(false)
   const generationNotice = ref<string | null>(null)
   const showAssetPicker = ref(false)
   const scriptSource = ref<'llm' | 'preset' | null>(null)
@@ -109,6 +112,15 @@ export function useVideoPlanStudio() {
     return selectedScene.value
   })
 
+  const activeSceneStartTime = computed(() => {
+    let accumulated = 0
+    for (const scene of project.value.scenes) {
+      if (scene.id === activePlayingScene.value?.id) return accumulated
+      accumulated += scene.duration
+    }
+    return 0
+  })
+
   const generateProgress = computed(() => {
     if (project.value.scenes.length === 0) return 15
     if (activeStep.value === 'material') return 55
@@ -139,6 +151,13 @@ export function useVideoPlanStudio() {
     }
   }
 
+  watch(
+    () => route.fullPath,
+    () => {
+      void loadProjectData()
+    },
+  )
+
   let timer: number | undefined
   watch(isPlaying, (playing) => {
     if (playing) {
@@ -153,6 +172,10 @@ export function useVideoPlanStudio() {
 
   onMounted(() => {
     void loadProjectData()
+  })
+
+  onActivated(() => {
+    if (!isDemoProject.value) void loadProjectData()
   })
 
   onUnmounted(() => {
@@ -278,6 +301,67 @@ export function useVideoPlanStudio() {
     }
   }
 
+  async function handleAiOptimize() {
+    if (project.value.scenes.length === 0) {
+      message.warning('请先生成分镜后再优化')
+      return
+    }
+
+    if (isDemoProject.value) {
+      isOptimizing.value = true
+      generationNotice.value = '演示模式：AI 正在优化口播与画面描述...'
+      window.setTimeout(() => {
+        const scene = selectedScene.value
+        if (scene) {
+          updateScene(scene.id, {
+            voice: trimDemoVoice(scene.voice),
+            visual: `${scene.visual}, cinematic lighting, vertical frame`,
+          })
+        }
+        isOptimizing.value = false
+        generationNotice.value = '演示模式：当前分镜已优化'
+        message.success('AI 优化完成（演示）')
+        window.setTimeout(() => {
+          generationNotice.value = null
+        }, 3000)
+      }, 1500)
+      return
+    }
+
+    if (isOptimizing.value) return
+
+    isOptimizing.value = true
+    generationNotice.value = selectedSceneId.value
+      ? 'AI 正在优化当前分镜...'
+      : 'AI 正在优化全部口播与画面描述...'
+    try {
+      const result = await optimizeScript({
+        projectId: projectId.value,
+        sceneId: selectedSceneId.value || undefined,
+        style: aiStyle.value,
+      })
+      projectStore.currentProject = result.project
+      const sourceLabel = result.source === 'llm' ? 'DeepSeek AI' : '智能规则'
+      generationNotice.value = result.summary ?? `已优化 ${result.optimizedCount} 个分镜（${sourceLabel}）`
+      if (result.notice) message.warning(result.notice)
+      else message.success(result.summary ?? 'AI 优化完成')
+      void workspaceStore.loadSummary()
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : 'AI 优化失败')
+      generationNotice.value = null
+    } finally {
+      isOptimizing.value = false
+      window.setTimeout(() => {
+        generationNotice.value = null
+      }, 4000)
+    }
+  }
+
+  function trimDemoVoice(text: string) {
+    const clean = text.trim()
+    return clean.length > 32 ? `${clean.slice(0, 31)}…` : clean
+  }
+
   function handleAddScene() {
     if (!isDemoProject.value) {
       message.info('正式项目请通过 AI 重新生成故事板')
@@ -311,6 +395,37 @@ export function useVideoPlanStudio() {
     selectedSceneId.value = scenes[0].id
   }
 
+  async function handleRedub() {
+    if (project.value.scenes.length === 0) {
+      message.warning('请先生成分镜后再配音')
+      return
+    }
+
+    if (isDemoProject.value) {
+      message.info('演示模式暂不支持重新配音')
+      return
+    }
+
+    if (isRedubbing.value) return
+
+    isRedubbing.value = true
+    generationNotice.value = '正在重新生成配音...'
+    try {
+      const updated = await regenerateVoice(projectId.value)
+      projectStore.currentProject = updated
+      generationNotice.value = '配音已更新，点击播放试听'
+      message.success('配音生成完成')
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : '配音生成失败')
+      generationNotice.value = null
+    } finally {
+      isRedubbing.value = false
+      window.setTimeout(() => {
+        generationNotice.value = null
+      }, 4000)
+    }
+  }
+
   async function goToProduction() {
     if (isDemoProject.value) {
       await router.push({ name: 'production', params: { id: projectId.value } })
@@ -342,6 +457,8 @@ export function useVideoPlanStudio() {
     aiPromptTopic,
     aiStyle,
     isGenerating,
+    isOptimizing,
+    isRedubbing,
     generationNotice,
     showAssetPicker,
     scriptSource,
@@ -349,9 +466,12 @@ export function useVideoPlanStudio() {
     selectedScene,
     totalDuration,
     activePlayingScene,
+    activeSceneStartTime,
     generateProgress,
     updateScene,
     handleGenerate,
+    handleAiOptimize,
+    handleRedub,
     handleAddScene,
     handleDeleteScene,
     goToProduction,

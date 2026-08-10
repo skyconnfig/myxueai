@@ -27,6 +27,7 @@ export interface TaskSummary {
     type: string
     status: string
     progress: number
+    error?: string | null
     updatedAt: string
   }>
 }
@@ -40,5 +41,27 @@ export function fetchTasks(params?: { status?: string; limit?: number }) {
     url: '/tasks',
     method: 'GET',
     params,
+  })
+}
+
+export function stopTask(id: string) {
+  return request<VideoTaskItem>({
+    url: `/tasks/${id}/stop`,
+    method: 'POST',
+  })
+}
+
+export function deleteTask(id: string) {
+  return request<{ id: string; deleted: boolean }>({
+    url: `/tasks/${id}`,
+    method: 'DELETE',
+  })
+}
+
+export function createProductionTask(projectId: string) {
+  return request<{ task: VideoTaskItem | null; production: unknown }>({
+    url: '/tasks',
+    method: 'POST',
+    data: { projectId, type: 'PRODUCTION' },
   })
 }

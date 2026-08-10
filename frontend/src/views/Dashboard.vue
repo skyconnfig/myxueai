@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useDialog, useMessage } from 'naive-ui'
 import {
   ArrowRight,
   Clock,
@@ -10,6 +11,7 @@ import {
   Plus,
   Rocket,
   Sparkles,
+  Trash2,
   TrendingUp,
   Video,
   Wand2,
@@ -18,8 +20,11 @@ import { useProjectStore } from '@/stores/project'
 import { useWorkspaceStore } from '@/stores/workspace'
 
 const router = useRouter()
+const message = useMessage()
+const dialog = useDialog()
 const projectStore = useProjectStore()
 const workspaceStore = useWorkspaceStore()
+const deletingId = ref<string | null>(null)
 
 onMounted(async () => {
   await Promise.all([projectStore.loadProjects(), workspaceStore.loadTemplates(), workspaceStore.loadSummary()])
@@ -95,6 +100,32 @@ function statusLabel(status: string) {
     Ready: { text: '已就绪', class: 'bg-success/10 border-success/30 text-success' },
   }
   return map[status] ?? map.DRAFT
+}
+
+function confirmDeleteProject(project: { id: string; name: string }, event: Event) {
+  event.stopPropagation()
+  dialog.warning({
+    title: '删除项目',
+    content: `确定删除「${project.name}」？此操作不可恢复，分镜、素材与任务记录将一并删除。`,
+    positiveText: '删除',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      await handleDeleteProject(project.id)
+    },
+  })
+}
+
+async function handleDeleteProject(id: string) {
+  deletingId.value = id
+  try {
+    await projectStore.removeProject(id)
+    message.success('项目已删除')
+    void workspaceStore.refreshTasks()
+  } catch (err) {
+    message.error(err instanceof Error ? err.message : '删除项目失败')
+  } finally {
+    deletingId.value = null
+  }
 }
 </script>
 
@@ -201,11 +232,10 @@ function statusLabel(status: string) {
         >
           暂无项目，点击「AI 创建视频」开始第一个项目
         </div>
-        <button
+        <div
           v-for="project in displayProjects"
           :key="project.id"
-          type="button"
-          class="btn-soft !h-auto !p-0 !rounded-xl overflow-hidden flex-col !items-stretch !justify-start group w-full text-left"
+          class="btn-soft !h-auto !p-0 !rounded-xl overflow-hidden flex-col !items-stretch !justify-start group w-full text-left cursor-pointer"
           @click="openStudio(project.id)"
         >
           <div class="relative h-44 bg-dark overflow-hidden">
@@ -228,7 +258,16 @@ function statusLabel(status: string) {
                 {{ statusLabel(String(project.status)).text }}
               </span>
             </div>
-            <div class="absolute inset-0 bg-dark/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+            <button
+              type="button"
+              class="absolute top-3 right-3 z-10 btn-soft !h-8 !w-8 !p-0 !rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+              :disabled="deletingId === project.id"
+              title="删除项目"
+              @click="confirmDeleteProject(project, $event)"
+            >
+              <Trash2 class="w-3.5 h-3.5 text-danger" />
+            </button>
+            <div class="absolute inset-0 bg-dark/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
               <div class="btn-soft btn-soft--primary !h-9 !px-4 !rounded-lg text-xs">
                 <Play class="w-3.5 h-3.5 text-accent-blue fill-current" />
                 打开 AI Studio
@@ -245,7 +284,7 @@ function statusLabel(status: string) {
             </h3>
             <div class="text-xs text-muted pt-2 border-t border-border">{{ project.sceneCount }} 个分镜 · {{ project.duration }}s</div>
           </div>
-        </button>
+        </div>
       </div>
     </div>
   </div>

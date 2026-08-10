@@ -1,5 +1,6 @@
 import { AppError } from '../../middleware/error-handler.js'
 import { ProjectStatus } from '../../constants/status.js'
+import { productionService } from '../production/production.service.js'
 import { projectRepository } from './project.repository.js'
 import type { CreateProjectInput } from './project.types.js'
 
@@ -9,6 +10,7 @@ function summarizeName(prompt: string) {
 }
 
 function toProjectDto(project: NonNullable<Awaited<ReturnType<typeof projectRepository.findById>>>) {
+  const assets = project.assets ?? []
   return {
     id: project.id,
     name: project.name,
@@ -21,18 +23,25 @@ function toProjectDto(project: NonNullable<Awaited<ReturnType<typeof projectRepo
     thumbnail: project.thumbnail,
     createdAt: project.createdAt.toISOString(),
     updatedAt: project.updatedAt.toISOString(),
-    scenes: project.scenes.map((scene) => ({
-      id: scene.id,
-      projectId: scene.projectId,
-      order: scene.order,
-      title: scene.title,
-      description: scene.description,
-      visualPrompt: scene.visualPrompt,
-      voiceText: scene.voiceText,
-      duration: scene.duration,
-      imageUrl: scene.imageUrl,
-      videoUrl: scene.videoUrl,
-    })),
+    scenes: project.scenes.map((scene) => {
+      const audioAsset = assets.find(
+        (asset) => asset.sceneId === scene.id && asset.type === 'AUDIO',
+      )
+      return {
+        id: scene.id,
+        projectId: scene.projectId,
+        order: scene.order,
+        title: scene.title,
+        description: scene.description,
+        visualPrompt: scene.visualPrompt,
+        voiceText: scene.voiceText,
+        duration: scene.duration,
+        imageUrl: scene.imageUrl,
+        videoUrl: scene.videoUrl,
+        audioUrl: audioAsset?.url ?? null,
+        audioProvider: audioAsset?.provider ?? null,
+      }
+    }),
     script: project.scripts[0]?.content ?? null,
   }
 }
@@ -67,25 +76,35 @@ export class ProjectService {
   }
 
   async createProject(input: CreateProjectInput, userId?: string) {
-    const project = await projectRepository.create({
+    const created = await projectRepository.create({
       ...input,
       userId,
       name: input.name ?? summarizeName(input.prompt),
     })
+    const project = await projectRepository.findById(created.id)
+    if (!project) throw new AppError(404, 'PROJECT_NOT_FOUND', 'Project not found')
     return toProjectDto(project)
   }
 
   async deleteProject(id: string) {
-    await this.getProject(id)
+    const project = await this.getProject(id)
+    if (
+      project.status === ProjectStatus.GENERATING ||
+      project.status === ProjectStatus.RENDERING ||
+      productionService.isPipelineRunning(id)
+    ) {
+      await productionService.cancelProject(id)
+    }
     await projectRepository.delete(id)
   }
 
   async markPlanning(id: string, data: { name?: string; duration?: number }) {
-    const project = await projectRepository.update(id, {
+    await projectRepository.update(id, {
       ...(data.name ? { name: data.name } : {}),
       ...(data.duration ? { duration: data.duration } : {}),
       status: ProjectStatus.PLANNING,
     })
+    const project = await projectRepository.findById(id)
     if (!project) throw new AppError(404, 'PROJECT_NOT_FOUND', 'Project not found')
     return toProjectDto(project)
   }

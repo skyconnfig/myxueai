@@ -9,6 +9,7 @@ const router = Router()
 
 
 router.post('/script', ...aiController.generateScript)
+router.post('/optimize', ...aiController.optimizeScript)
 
 
 

@@ -20,6 +20,7 @@ export class ProjectRepository {
       include: {
         scenes: { orderBy: { order: 'asc' } },
         scripts: { orderBy: { version: 'desc' }, take: 1 },
+        assets: { include: { audioMeta: true } },
       },
     })
   }
@@ -97,6 +98,50 @@ export class ProjectRepository {
   saveScript(projectId: string, content: unknown, version: number) {
     return prisma.videoScript.create({
       data: { projectId, content: content as Prisma.InputJsonValue, version },
+    })
+  }
+
+  updateScenesInPlace(
+    projectId: string,
+    updates: Array<{
+      id: string
+      title?: string | null
+      description?: string
+      visualPrompt?: string | null
+      voiceText?: string | null
+      duration?: number
+    }>,
+  ) {
+    return prisma.$transaction(async (tx) => {
+      for (const scene of updates) {
+        await tx.scene.update({
+          where: { id: scene.id },
+          data: {
+            ...(scene.title !== undefined ? { title: scene.title } : {}),
+            ...(scene.description !== undefined ? { description: scene.description } : {}),
+            ...(scene.visualPrompt !== undefined ? { visualPrompt: scene.visualPrompt } : {}),
+            ...(scene.voiceText !== undefined ? { voiceText: scene.voiceText } : {}),
+            ...(scene.duration !== undefined ? { duration: scene.duration } : {}),
+          },
+        })
+      }
+
+      const project = await tx.project.findUnique({
+        where: { id: projectId },
+        include: { scenes: { orderBy: { order: 'asc' } } },
+      })
+      if (project) {
+        const duration = project.scenes.reduce((sum, item) => sum + item.duration, 0)
+        await tx.project.update({ where: { id: projectId }, data: { duration } })
+      }
+
+      return tx.project.findUnique({
+        where: { id: projectId },
+        include: {
+          scenes: { orderBy: { order: 'asc' } },
+          scripts: { orderBy: { version: 'desc' }, take: 1 },
+        },
+      })
     })
   }
 }

@@ -53,6 +53,8 @@ export interface Scene {
   duration: number
   imageUrl?: string | null
   videoUrl?: string | null
+  audioUrl?: string | null
+  audioProvider?: string | null
 }
 
 export interface UpdateScenePayload {
@@ -77,6 +79,20 @@ export interface GenerateScriptResult {
   source: 'llm' | 'preset'
   notice?: string
   plan?: VideoPlan
+}
+
+export interface OptimizeScriptPayload {
+  projectId: string
+  sceneId?: string
+  style?: string
+}
+
+export interface OptimizeScriptResult {
+  project: ProjectDetail
+  source: 'llm' | 'preset'
+  notice?: string
+  summary?: string
+  optimizedCount: number
 }
 
 export interface VideoPlanScene {

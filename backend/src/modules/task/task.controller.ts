@@ -1,6 +1,8 @@
 import type { NextFunction, Request, Response } from 'express'
+import { validateBody } from '../../middleware/validate.js'
 import { sendSuccess } from '../../utils/response.js'
 import { taskService } from './task.service.js'
+import { createTaskSchema } from './task.types.js'
 
 export class TaskController {
   list = async (req: Request, res: Response, next: NextFunction) => {
@@ -27,6 +29,36 @@ export class TaskController {
     try {
       const data = await taskService.getTask(String(req.params.id))
       return sendSuccess(res, data)
+    } catch (error) {
+      return next(error)
+    }
+  }
+
+  create = [
+    validateBody(createTaskSchema),
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const data = await taskService.createTask(req.body)
+        return sendSuccess(res, data, 'Task created')
+      } catch (error) {
+        return next(error)
+      }
+    },
+  ]
+
+  stop = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const data = await taskService.stopTask(String(req.params.id))
+      return sendSuccess(res, data, 'Task stopped')
+    } catch (error) {
+      return next(error)
+    }
+  }
+
+  remove = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const data = await taskService.deleteTask(String(req.params.id))
+      return sendSuccess(res, data, 'Task deleted')
     } catch (error) {
       return next(error)
     }

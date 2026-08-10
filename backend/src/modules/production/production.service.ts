@@ -5,6 +5,7 @@ import { wsHub } from '../../ws/ws.server.js'
 import { assetService } from '../asset/asset.service.js'
 import { composeService } from '../compose/compose.service.js'
 import { projectRepository } from '../project/project.repository.js'
+import { projectService } from '../project/project.service.js'
 import { renderService } from '../render/render.service.js'
 import { taskRepository } from '../task/task.repository.js'
 import { creditsService } from '../workspace/credits.service.js'
@@ -26,6 +27,20 @@ const TASK_LABELS: Record<string, string> = {
 }
 
 const runningPipelines = new Set<string>()
+const cancelledProjects = new Set<string>()
+
+class PipelineCancelledError extends Error {
+  constructor() {
+    super('PIPELINE_CANCELLED')
+    this.name = 'PipelineCancelledError'
+  }
+}
+
+function assertNotCancelled(projectId: string) {
+  if (cancelledProjects.has(projectId)) {
+    throw new PipelineCancelledError()
+  }
+}
 
 function formatTime(date: Date) {
   return date.toTimeString().slice(0, 8)
@@ -123,6 +138,10 @@ export class ProductionService {
         result: { completedAt: new Date().toISOString() },
       })
     } catch (error) {
+      if (error instanceof PipelineCancelledError) {
+        await taskRepository.update(task.id, { status: TaskStatus.FAILED, error: '用户已停止' })
+        return
+      }
       const message = error instanceof Error ? error.message : '任务失败'
       await taskRepository.update(task.id, { status: TaskStatus.FAILED, error: message })
       await projectRepository.update(projectId, { status: ProjectStatus.FAILED })
@@ -130,29 +149,68 @@ export class ProductionService {
     }
   }
 
+  async cancelProject(projectId: string) {
+    cancelledProjects.add(projectId)
+    runningPipelines.delete(projectId)
+
+    const tasks = await taskRepository.findByProjectId(projectId)
+    for (const task of tasks) {
+      if (task.status === TaskStatus.RUNNING || task.status === TaskStatus.WAITING) {
+        await taskRepository.update(task.id, {
+          status: TaskStatus.FAILED,
+          error: '用户已停止',
+        })
+      }
+    }
+
+    const project = await projectRepository.findById(projectId)
+    if (
+      project &&
+      (project.status === ProjectStatus.GENERATING || project.status === ProjectStatus.RENDERING)
+    ) {
+      await projectRepository.update(projectId, { status: ProjectStatus.PLANNING })
+    }
+
+    await this.emitStatus(projectId)
+    cancelledProjects.delete(projectId)
+  }
+
+  isPipelineRunning(projectId: string) {
+    return runningPipelines.has(projectId)
+  }
+
   async runPipeline(projectId: string) {
     if (runningPipelines.has(projectId)) return
     runningPipelines.add(projectId)
 
     try {
+      assertNotCancelled(projectId)
       await this.runTask(projectId, TaskType.IMAGE, async (onProgress) => {
         await assetService.generateImagesForProject(projectId, (p) => void onProgress(p))
       })
 
+      assertNotCancelled(projectId)
       await this.runTask(projectId, TaskType.VOICE, async (onProgress) => {
         await assetService.generateVoiceForProject(projectId, (p) => void onProgress(p))
       })
 
+      assertNotCancelled(projectId)
       await this.runTask(projectId, TaskType.VIDEO, async (onProgress) => {
         await composeService.composeForProject(projectId, (p) => void onProgress(p))
       })
 
+      assertNotCancelled(projectId)
       await this.runTask(projectId, TaskType.RENDER, async (onProgress) => {
         await renderService.startRender(projectId, (p) => void onProgress(p))
       })
 
+      if (cancelledProjects.has(projectId)) return
+
       await projectRepository.update(projectId, { status: ProjectStatus.COMPLETED })
       await this.emitStatus(projectId)
+    } catch (error) {
+      if (error instanceof PipelineCancelledError) return
+      throw error
     } finally {
       runningPipelines.delete(projectId)
     }
@@ -183,6 +241,17 @@ export class ProductionService {
       credits: await creditsService.getBalance(),
       videoUrl: project.videoUrl,
     }
+  }
+
+  async regenerateVoice(projectId: string) {
+    const project = await projectRepository.findById(projectId)
+    if (!project) throw new AppError(404, 'PROJECT_NOT_FOUND', 'Project not found')
+    if (project.scenes.length === 0) {
+      throw new AppError(400, 'NO_SCENES', '请先生成 AI 分镜后再配音')
+    }
+
+    await assetService.generateVoiceForProject(projectId, undefined, { force: true })
+    return projectService.getProject(projectId)
   }
 
   async start(projectId: string, userId?: string) {

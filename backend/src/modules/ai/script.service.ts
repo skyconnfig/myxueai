@@ -3,7 +3,7 @@ import { ProjectStatus, TaskStatus, TaskType } from '../../constants/status.js'
 import { projectRepository } from '../project/project.repository.js'
 import { projectService } from '../project/project.service.js'
 import { taskRepository } from '../task/task.repository.js'
-import type { GenerateScriptInput, VideoPlan } from '../project/project.types.js'
+import type { GenerateScriptInput, OptimizeScriptInput, VideoPlan } from '../project/project.types.js'
 import { videoPlanSchema } from '../project/project.types.js'
 import { openAICompatibleProvider } from './providers/openai-compatible.provider.js'
 import { creditsService } from '../workspace/credits.service.js'
@@ -85,6 +85,39 @@ function normalizePlan(plan: VideoPlan, fallbackDuration: number): VideoPlan {
   }
 }
 
+function trimVoice(text: string, max = 36) {
+  const clean = text.trim().replace(/\s+/g, '')
+  if (clean.length <= max) return clean
+  return `${clean.slice(0, max - 1)}…`
+}
+
+function optimizePresetScenes(
+  scenes: Array<{
+    index: number
+    title?: string
+    duration: number
+    description: string
+    visual: string
+    voice: string
+  }>,
+  focusSceneIndex?: number,
+) {
+  return scenes.map((scene) => {
+    if (focusSceneIndex != null && scene.index !== focusSceneIndex) return scene
+    const voice = trimVoice(scene.voice || scene.description)
+    const visual = scene.visual.includes('cinematic')
+      ? scene.visual
+      : `${scene.visual}, cinematic lighting, shallow depth of field, vertical video frame`
+    return {
+      ...scene,
+      voice,
+      visual,
+      description: scene.description.trim(),
+      title: scene.title ?? `分镜 ${scene.index}`,
+    }
+  })
+}
+
 export class ScriptService {
   async generateScript(input: GenerateScriptInput) {
     const project = await projectRepository.findById(input.projectId)
@@ -160,6 +193,120 @@ export class ScriptService {
 
     const updated = await projectService.getProject(project.id)
     return { project: updated, source, notice, plan }
+  }
+
+  async optimizeScript(input: OptimizeScriptInput) {
+    const project = await projectRepository.findById(input.projectId)
+    if (!project) {
+      throw new AppError(404, 'PROJECT_NOT_FOUND', 'Project not found')
+    }
+    if (project.scenes.length === 0) {
+      throw new AppError(400, 'NO_SCENES', '请先生成分镜后再优化')
+    }
+
+    const focusScene = input.sceneId
+      ? project.scenes.find((scene) => scene.id === input.sceneId)
+      : undefined
+    if (input.sceneId && !focusScene) {
+      throw new AppError(404, 'SCENE_NOT_FOUND', '分镜不存在')
+    }
+
+    const style = input.style ?? project.style ?? undefined
+    const currentScenes = project.scenes.map((scene) => ({
+      index: scene.order,
+      title: scene.title ?? undefined,
+      duration: scene.duration,
+      description: scene.description,
+      visual: scene.visualPrompt ?? scene.description,
+      voice: scene.voiceText ?? scene.description,
+    }))
+
+    const cost = focusScene
+      ? Math.round(config.workspace.scriptOptimizationCost * 0.5)
+      : config.workspace.scriptOptimizationCost
+    await creditsService.deduct(cost, 'script_optimization')
+
+    let source: 'llm' | 'preset' = 'preset'
+    let notice: string | undefined
+    let summary: string | undefined
+    let optimizedScenes: Array<{
+      index: number
+      title?: string
+      duration: number
+      description: string
+      visual: string
+      voice: string
+    }> = currentScenes
+
+    if (openAICompatibleProvider.isConfigured) {
+      try {
+        const result = await openAICompatibleProvider.optimizeVideoPlan({
+          topic: project.prompt,
+          style,
+          duration: project.duration,
+          ratio: project.ratio,
+          focusSceneIndex: focusScene?.order,
+          scenes: currentScenes,
+        })
+        optimizedScenes = result.scenes
+        summary = result.summary
+        source = 'llm'
+      } catch (error) {
+        notice = error instanceof Error ? error.message : 'LLM optimization failed'
+        optimizedScenes = optimizePresetScenes(currentScenes, focusScene?.order)
+        summary = '已使用本地规则优化口播与画面描述'
+      }
+    } else {
+      notice = 'LLM_API_KEY 未配置，已使用本地规则优化'
+      optimizedScenes = optimizePresetScenes(currentScenes, focusScene?.order)
+      summary = '已压缩口播并增强画面描述'
+    }
+
+    const sceneUpdates = project.scenes.map((scene, idx) => {
+      const optimized = optimizedScenes[idx]
+      if (!optimized) return null
+      if (focusScene && scene.id !== focusScene.id) return null
+      return {
+        id: scene.id,
+        title: optimized.title ?? scene.title,
+        description: optimized.description,
+        visualPrompt: optimized.visual,
+        voiceText: optimized.voice,
+        duration: optimized.duration,
+      }
+    }).filter(Boolean) as Array<{
+      id: string
+      title?: string | null
+      description: string
+      visualPrompt: string
+      voiceText: string
+      duration: number
+    }>
+
+    await projectRepository.updateScenesInPlace(project.id, sceneUpdates)
+
+    const nextVersion = (project.scripts[0]?.version ?? 0) + 1
+    await projectRepository.saveScript(
+      project.id,
+      {
+        title: project.name,
+        duration: project.duration,
+        style,
+        scenes: optimizedScenes,
+        optimizedAt: new Date().toISOString(),
+        summary,
+      },
+      nextVersion,
+    )
+
+    const updated = await projectService.getProject(project.id)
+    return {
+      project: updated,
+      source,
+      notice,
+      summary,
+      optimizedCount: sceneUpdates.length,
+    }
   }
 }
 

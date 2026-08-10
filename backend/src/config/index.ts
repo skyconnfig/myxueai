@@ -28,6 +28,7 @@ export const config = {
   workspace: {
     defaultCredits: Number(process.env.WORKSPACE_CREDITS ?? 12560),
     scriptGenerationCost: Number(process.env.SCRIPT_GENERATION_COST ?? 120),
+    scriptOptimizationCost: Number(process.env.SCRIPT_OPTIMIZATION_COST ?? 80),
     productionCost: Number(process.env.PRODUCTION_COST ?? 280),
   },
   openaiApiKey: process.env.OPENAI_API_KEY ?? '',

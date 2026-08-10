@@ -1,4 +1,5 @@
 import { request } from './http'
+import type { ProjectDetail } from '@/types'
 
 export interface ProductionStep {
   key: string
@@ -35,6 +36,13 @@ export function fetchProductionStatus(projectId: string, tick = true) {
 export function startProduction(projectId: string) {
   return request<ProductionStatus>({
     url: `/projects/${projectId}/production/start`,
+    method: 'POST',
+  })
+}
+
+export function regenerateVoice(projectId: string) {
+  return request<ProjectDetail>({
+    url: `/projects/${projectId}/production/voice`,
     method: 'POST',
   })
 }

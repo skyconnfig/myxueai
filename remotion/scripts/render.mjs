@@ -59,6 +59,8 @@ async function main() {
     inputProps: input,
     crf,
     concurrency,
+    enforceAudioTrack: true,
+    muted: false,
     chromiumOptions: {
       headless: process.env.REMOTION_CHROMIUM_HEADLESS !== 'false',
     },

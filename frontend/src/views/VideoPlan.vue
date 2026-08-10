@@ -28,6 +28,8 @@ const {
   aiPromptTopic,
   aiStyle,
   isGenerating,
+  isOptimizing,
+  isRedubbing,
   generationNotice,
   showAssetPicker,
   scriptSource,
@@ -35,9 +37,12 @@ const {
   selectedScene,
   totalDuration,
   activePlayingScene,
+  activeSceneStartTime,
   generateProgress,
   updateScene,
   handleGenerate,
+  handleAiOptimize,
+  handleRedub,
   handleAddScene,
   handleDeleteScene,
   goToProduction,
@@ -100,13 +105,15 @@ function showComingSoon(feature: string) {
             :style="project.category"
             :progress="generateProgress"
             :has-scenes="project.scenes.length > 0"
+            :is-optimizing="isOptimizing || isRedubbing"
+            :scene-start-time="activeSceneStartTime"
             @update:current-time="currentTime = $event"
             @update:is-playing="isPlaying = $event"
             @update:show-subtitles="showSubtitles = $event"
             @update:is-muted="isMuted = $event"
-            @ai-optimize="showComingSoon('AI 优化')"
+            @ai-optimize="handleAiOptimize"
             @change-style="showComingSoon('改变风格')"
-            @redub="showComingSoon('重新配音')"
+            @redub="handleRedub"
             @auto-edit="showComingSoon('自动剪辑')"
             @edit-subtitles="showComingSoon('修改字幕')"
           />

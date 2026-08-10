@@ -64,14 +64,17 @@ async function runRemotionRender(inputPath: string, outputPath: string): Promise
   })
 }
 
-function writeFallbackPreview(inputPath: string, outputPath: string) {
-  const input = JSON.parse(fs.readFileSync(inputPath, 'utf8')) as {
-    scenes: Array<{ text: string; image?: string; duration: number }>
-  }
+function writeFallbackPreview(
+  input: {
+    scenes: Array<{ text: string; image?: string; audio?: string; duration: number }>
+  },
+  outputPath: string,
+) {
   const slides = input.scenes
     .map(
       (s, i) =>
-        `<section style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0B0F19;color:#fff;padding:2rem;text-align:center">
+        `<section style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0B0F19;color:#fff;padding:2rem;text-align:center;flex-direction:column">
+          ${s.audio ? `<audio src="${s.audio}" autoplay controls style="margin-bottom:1rem;width:min(320px,80%)"></audio>` : ''}
           ${s.image ? `<img src="${s.image}" style="max-width:80%;max-height:60vh;border-radius:12px;margin-bottom:1rem"/>` : ''}
           <p style="font-size:1.5rem">${s.text}</p>
           <small style="color:#64748B">Scene ${i + 1} · ${s.duration}s</small>
@@ -123,7 +126,7 @@ export class RenderService {
     if (remotionOk) {
       outputUrl = publicUrl(path.relative(storagePaths.root, mp4Path))
     } else {
-      writeFallbackPreview(inputPath, previewPath)
+      writeFallbackPreview(renderInput, previewPath)
       outputUrl = publicUrl(path.relative(storagePaths.root, previewPath))
     }
 

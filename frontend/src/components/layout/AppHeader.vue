@@ -4,7 +4,7 @@ import { computed, onMounted, ref } from 'vue'
 
 import { useRoute, useRouter } from 'vue-router'
 
-import { NAvatar, NBadge } from 'naive-ui'
+import { NAvatar, NBadge, useMessage } from 'naive-ui'
 
 import {
 
@@ -18,11 +18,17 @@ import {
 
   Play,
 
+  Plus,
+
   Smartphone,
 
   Sparkles,
 
   Square,
+
+  CircleStop,
+
+  Trash2,
 
   Tv,
 
@@ -60,11 +66,14 @@ const route = useRoute()
 
 const router = useRouter()
 
+const message = useMessage()
+
 const studioStore = useStudioStore()
 const workspaceStore = useWorkspaceStore()
 const authStore = useAuthStore()
 const showDropdown = ref(false)
 const showTaskPanel = ref(false)
+const taskBusyId = ref<string | null>(null)
 
 onMounted(() => {
   void workspaceStore.loadSummary()
@@ -72,6 +81,86 @@ onMounted(() => {
 })
 
 const taskBadgeCount = computed(() => workspaceStore.runningCount + workspaceStore.queueCount)
+
+const displayTasks = computed(() =>
+  workspaceStore.tasks.length ? workspaceStore.tasks : workspaceStore.recentTasks,
+)
+
+const TASK_TYPE_LABELS: Record<string, string> = {
+  SCRIPT: '脚本',
+  IMAGE: '配图',
+  VOICE: '配音',
+  VIDEO: '合成',
+  RENDER: '渲染',
+}
+
+const TASK_STATUS_LABELS: Record<string, string> = {
+  RUNNING: '进行中',
+  WAITING: '等待中',
+  SUCCESS: '已完成',
+  FAILED: '已停止',
+}
+
+function taskTypeLabel(type: string) {
+  return TASK_TYPE_LABELS[type] ?? type
+}
+
+function taskStatusLabel(status: string) {
+  return TASK_STATUS_LABELS[status] ?? status
+}
+
+function canStopTask(status: string) {
+  return status === 'RUNNING' || status === 'WAITING'
+}
+
+function canDeleteTask(status: string) {
+  return status !== 'RUNNING'
+}
+
+async function toggleTaskPanel() {
+  showTaskPanel.value = !showTaskPanel.value
+  if (showTaskPanel.value) {
+    await workspaceStore.loadTasks()
+  }
+}
+
+async function handleStopTask(taskId: string) {
+  taskBusyId.value = taskId
+  try {
+    await workspaceStore.stopTaskById(taskId)
+    message.success('任务已停止')
+  } catch (err) {
+    message.error(err instanceof Error ? err.message : '停止任务失败')
+  } finally {
+    taskBusyId.value = null
+  }
+}
+
+async function handleDeleteTask(taskId: string) {
+  taskBusyId.value = taskId
+  try {
+    await workspaceStore.deleteTaskById(taskId)
+    message.success('任务已删除')
+  } catch (err) {
+    message.error(err instanceof Error ? err.message : '删除任务失败')
+  } finally {
+    taskBusyId.value = null
+  }
+}
+
+function openCreateTask() {
+  showTaskPanel.value = false
+  router.push({ name: 'create-video' })
+}
+
+function openTaskProject(task: { projectId: string; status: string }) {
+  showTaskPanel.value = false
+  if (task.status === 'RUNNING' || task.status === 'WAITING') {
+    router.push({ name: 'production', params: { id: task.projectId } })
+    return
+  }
+  router.push({ name: 'video-plan', params: { id: task.projectId } })
+}
 
 
 
@@ -337,7 +426,7 @@ function selectProject(id: string) {
 
             class="btn-soft !h-8 !px-2.5 !rounded-lg"
 
-            @click="showTaskPanel = !showTaskPanel"
+            @click="toggleTaskPanel"
 
           >
 
@@ -351,32 +440,71 @@ function selectProject(id: string) {
 
         <div
           v-if="showTaskPanel"
-          class="absolute right-0 mt-2 w-64 bg-surface border border-border rounded-xl p-2 z-50"
+          class="absolute right-0 mt-2 w-80 bg-surface border border-border rounded-xl p-2 z-50 shadow-2xl"
         >
 
-          <div class="px-2 py-1.5 text-[10px] font-medium text-muted/60 tracking-wide mb-1">AI 任务中心</div>
+          <div class="px-2 py-1.5 flex items-center justify-between mb-1">
+            <span class="text-[10px] font-medium text-muted/60 tracking-wide">AI 任务中心</span>
+            <button
+              type="button"
+              class="btn-soft !h-7 !px-2 !rounded-lg !text-[11px]"
+              @click="openCreateTask"
+            >
+              <Plus class="w-3 h-3 text-accent-blue" />
+              新建任务
+            </button>
+          </div>
 
-          <div class="space-y-0.5 max-h-48 overflow-y-auto">
+          <div class="space-y-1 max-h-56 overflow-y-auto">
 
-            <div v-if="!workspaceStore.recentTasks.length" class="px-3 py-2 text-[11px] text-muted">暂无进行中的任务</div>
+            <div v-if="!displayTasks.length" class="px-3 py-4 text-[11px] text-muted text-center">暂无任务，点击「新建任务」创建视频</div>
 
             <div
-
-              v-for="task in workspaceStore.recentTasks.slice(0, 6)"
-
+              v-for="task in displayTasks.slice(0, 10)"
               :key="task.id"
-
-              class="btn-nav !cursor-default"
-
+              class="rounded-lg border border-border/60 bg-dark/40 px-2 py-2 space-y-1.5"
             >
 
-              <span class="text-white truncate flex-1 text-left">{{ task.projectName }}</span>
+              <button
+                type="button"
+                class="w-full flex items-start gap-2 text-left"
+                @click="openTaskProject(task)"
+              >
+                <div class="min-w-0 flex-1">
+                  <div class="text-white text-xs truncate">{{ task.projectName }}</div>
+                  <div class="text-[10px] text-muted mt-0.5">
+                    {{ taskTypeLabel(task.type) }} · {{ taskStatusLabel(task.status) }}
+                    <span v-if="task.status === 'RUNNING'" class="text-accent-blue font-mono"> · {{ task.progress }}%</span>
+                  </div>
+                </div>
+              </button>
 
-              <span class="text-accent-blue font-mono shrink-0 text-[11px]">{{ task.type }} · {{ task.progress }}%</span>
+              <div class="flex items-center gap-1 justify-end">
+                <button
+                  v-if="canStopTask(task.status)"
+                  type="button"
+                  class="btn-soft !h-7 !px-2 !rounded-lg !text-[10px]"
+                  :disabled="taskBusyId === task.id"
+                  @click.stop="handleStopTask(task.id)"
+                >
+                  <CircleStop class="w-3 h-3 text-warning" />
+                  停止
+                </button>
+                <button
+                  v-if="canDeleteTask(task.status)"
+                  type="button"
+                  class="btn-soft !h-7 !px-2 !rounded-lg !text-[10px]"
+                  :disabled="taskBusyId === task.id"
+                  @click.stop="handleDeleteTask(task.id)"
+                >
+                  <Trash2 class="w-3 h-3 text-danger" />
+                  删除
+                </button>
+              </div>
 
             </div>
 
-            <div class="mx-2 mt-1 pt-2 border-t border-border space-y-1 text-[11px] text-muted">
+            <div class="mx-1 mt-1 pt-2 border-t border-border space-y-1 text-[11px] text-muted">
 
               <div class="flex justify-between px-1">
 
