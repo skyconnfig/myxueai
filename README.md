@@ -18,7 +18,7 @@
 | 后端 | Node.js + Express + TypeScript + Prisma |
 | 数据库 | SQLite |
 | 视频 | Remotion 4.x + Chromium |
-| AI | LLM 脚本 + OpenAI DALL·E 3 配图 + ElevenLabs TTS |
+| AI | api.xueai.me 网关（LLM / 配图 / speech-2.8-hd TTS） |
 | 存储 | 本地 `storage/` |
 
 ## 项目结构
@@ -48,7 +48,8 @@ xueai-video-factory/
 | 4 | API 模块（Project → AI → Scene → Task → Production） | ✅ 完成 |
 | 5 | Remotion 集成 + MP4 渲染 | ✅ 完成（Chromium + 素材 staging） |
 | 6 | 用户认证 + WebSocket + Asset | ✅ 完成 |
-| 7 | 真实 AI 配图/配音 + 设置页 | ✅ 完成 |
+| 7 | 真实 AI 配图 + 设置页（资料/登出） | ✅ 完成 |
+| 8 | xueai 网关 TTS（speech-2.8-hd） | ✅ 完成 |
 
 ### 前端页面
 
@@ -75,20 +76,22 @@ xueai-video-factory/
 | Production | `/api/projects/:id/production` | ✅ 5 步流水线（真实 AI + 渲染） |
 | Workspace | `/api/workspace` | ✅ 积分 / 模板 / 摘要 |
 | Video | `/api/video` | 🟡 脚本接口 |
-| Asset | `/api/assets` | ✅ CRUD + OpenAI/ElevenLabs 生成 |
+| Asset | `/api/assets` | ✅ CRUD + 网关配图/TTS 生成 |
 | Render | `/api/render` | ✅ Remotion MP4 + HTML 预览降级 |
 | Auth | `/api/auth` | ✅ 登录/注册/me/资料更新 |
 | WebSocket | `/ws/projects/:id` | ✅ 生产进度推送 |
 
 ### AI 生产说明
 
-生产流水线在配置了 API Key 时使用真实服务，否则自动降级为占位素材：
+生产流水线在配置了 API Key 时使用真实服务，否则自动降级为占位素材。默认网关：`https://api.xueai.me/v1`
 
-| 步骤 | 服务 | 环境变量 |
-|------|------|----------|
-| 分镜配图 | OpenAI DALL·E 3 | `OPENAI_API_KEY` |
-| 配音 | ElevenLabs TTS | `ELEVENLABS_API_KEY` |
-| 脚本 | OpenAI 兼容 LLM | `LLM_API_KEY` |
+| 步骤 | 服务 | 环境变量 | 备注 |
+|------|------|----------|------|
+| 脚本 | OpenAI 兼容 LLM | `LLM_API_KEY` | 如 gpt-4o-mini |
+| 分镜配图 | z-image-turbo / dall-e-3 | `OPENAI_API_KEY` | 网关兼容 OpenAI Images API |
+| 配音 | speech-2.8-hd（Minimax 异步） | `LLM_API_KEY` 或 `TTS_API_KEY` | 约 25s/句，中文音色 |
+| 配音（快） | tts-1 / gpt-4o-mini-tts | `TTS_MODEL=tts-1` | 同步，秒级返回 |
+| 配音（可选） | ElevenLabs | `ELEVENLABS_API_KEY` | 优先级高于网关 |
 
 ### Remotion MP4 渲染
 
@@ -108,7 +111,7 @@ pnpm install
 
 # 配置环境变量
 cp backend/.env.example backend/.env
-# 编辑 backend/.env：LLM_API_KEY（必填），可选 OPENAI_API_KEY / ELEVENLABS_API_KEY
+# 编辑 backend/.env：LLM_API_KEY + LLM_BASE_URL=https://api.xueai.me/v1
 
 # 初始化数据库
 cd backend
@@ -135,18 +138,19 @@ Demo 账号：`demo@xueai.local` / `demo123456`
 
 | 变量 | 说明 |
 |------|------|
-| `LLM_API_KEY` | LLM API 密钥（必填，AI 脚本生成） |
-| `LLM_BASE_URL` | OpenAI 兼容接口地址 |
-| `LLM_MODEL` | 模型名称 |
-| `OPENAI_API_KEY` | DALL·E 3 分镜配图（可选） |
-| `OPENAI_IMAGE_MODEL` | 图片模型，默认 `dall-e-3` |
-| `ELEVENLABS_API_KEY` | ElevenLabs TTS 配音（可选） |
-| `ELEVENLABS_VOICE_ID` | 默认音色 ID |
+| `LLM_API_KEY` | LLM / TTS 网关密钥（必填） |
+| `LLM_BASE_URL` | 网关地址，默认 `https://api.xueai.me/v1` |
+| `LLM_MODEL` | 脚本模型，如 `gpt-4o-mini` |
+| `OPENAI_API_KEY` | 配图密钥（可与 LLM 相同） |
+| `OPENAI_BASE_URL` | 配图网关地址 |
+| `OPENAI_IMAGE_MODEL` | 图片模型，推荐 `z-image-turbo` |
+| `TTS_MODEL` | 配音模型，默认 `speech-2.8-hd` |
+| `TTS_VOICE` | Minimax 音色，如 `Chinese (Mandarin)_Lyrical_Voice` |
+| `TTS_LANGUAGE_BOOST` | 语言增强，默认 `Chinese` |
+| `ELEVENLABS_API_KEY` | ElevenLabs 配音（可选，优先于网关） |
 | `DATABASE_URL` | SQLite 路径 |
 | `JWT_SECRET` | JWT 签名密钥 |
-| `JWT_EXPIRES_IN` | Token 有效期，默认 7d |
 | `REMOTION_CRF` | Remotion 视频质量 |
-| `REMOTION_CONCURRENCY` | Remotion 并行度 |
 
 ## 文档
 

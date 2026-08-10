@@ -5,6 +5,7 @@ import { AppError } from '../../middleware/error-handler.js'
 import { storagePaths } from '../../config/storage.js'
 import { openAiImageProvider } from '../ai/providers/openai-image.provider.js'
 import { elevenLabsProvider } from '../ai/providers/elevenlabs.provider.js'
+import { gatewayTtsProvider } from '../ai/providers/gateway-tts.provider.js'
 import { config } from '../../config/index.js'
 import { logger } from '../../utils/logger.js'
 import { AssetType } from '../../constants/status.js'
@@ -217,6 +218,7 @@ export class AssetService {
 
     const scenes = project.scenes
     const useElevenLabs = elevenLabsProvider.isConfigured()
+    const useGatewayTts = gatewayTtsProvider.isConfigured()
 
     for (let i = 0; i < scenes.length; i++) {
       const scene = scenes[i]
@@ -232,23 +234,28 @@ export class AssetService {
       let provider: string
       let metadata: Record<string, unknown> = { voiceText }
       let audioDuration = scene.duration
+      let voiceMeta = config.elevenLabs.voiceId
 
-      if (useElevenLabs && voiceText) {
+      if (voiceText && (useElevenLabs || useGatewayTts)) {
         try {
-          const generated = await elevenLabsProvider.generate(voiceText, scene.duration)
+          const generated = useElevenLabs
+            ? await elevenLabsProvider.generate(voiceText, scene.duration)
+            : await gatewayTtsProvider.generate(voiceText, scene.duration)
           const filename = `voice-${projectId}-${scene.order}${generated.ext}`
           dest = path.join(storagePaths.audio, filename)
           fs.mkdirSync(path.dirname(dest), { recursive: true })
           fs.writeFileSync(dest, generated.buffer)
           url = publicUrl(path.relative(storagePaths.root, dest))
           provider = generated.provider
+          voiceMeta = generated.voiceId
           metadata = {
             ...metadata,
             voiceId: generated.voiceId,
             model: generated.model,
           }
         } catch (error) {
-          logger(`ElevenLabs fallback for scene ${scene.order}: ${error instanceof Error ? error.message : error}`)
+          const label = useElevenLabs ? 'ElevenLabs' : 'Gateway TTS'
+          logger(`${label} fallback for scene ${scene.order}: ${error instanceof Error ? error.message : error}`)
           const filename = `voice-${projectId}-${scene.order}.wav`
           dest = path.join(storagePaths.audio, filename)
           writeSilentWav(dest, scene.duration || 1)
@@ -273,7 +280,7 @@ export class AssetService {
       })
       await assetRepository.createAudioMeta(asset.id, {
         duration: audioDuration,
-        voice: config.elevenLabs.voiceId,
+        voice: voiceMeta,
         language: 'zh-CN',
       })
       onProgress?.(Math.round(((i + 1) / scenes.length) * 100))

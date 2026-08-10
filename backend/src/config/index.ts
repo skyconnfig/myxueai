@@ -42,6 +42,21 @@ export const config = {
     voiceId: process.env.ELEVENLABS_VOICE_ID ?? 'EXAVITQu4vr4xnSDxMaL',
     model: process.env.ELEVENLABS_MODEL ?? 'eleven_multilingual_v2',
   },
+  tts: {
+    apiKey: process.env.TTS_API_KEY ?? process.env.LLM_API_KEY ?? process.env.OPENAI_API_KEY ?? '',
+    baseUrl: process.env.TTS_BASE_URL ?? process.env.LLM_BASE_URL ?? 'https://api.xueai.me/v1',
+    minimaxBaseUrl:
+      process.env.TTS_MINIMAX_BASE_URL ??
+      process.env.TTS_BASE_URL?.replace(/\/v1\/?$/, '/minimax/v1') ??
+      'https://api.xueai.me/minimax/v1',
+    model: process.env.TTS_MODEL ?? 'speech-2.8-hd',
+    voice: process.env.TTS_VOICE ?? 'Chinese (Mandarin)_Lyrical_Voice',
+    openAiVoice: process.env.TTS_OPENAI_VOICE ?? 'alloy',
+    languageBoost: process.env.TTS_LANGUAGE_BOOST ?? 'Chinese',
+    speed: Number(process.env.TTS_SPEED ?? 1),
+    volume: Number(process.env.TTS_VOLUME ?? 1),
+    pitch: Number(process.env.TTS_PITCH ?? 0),
+  },
   remotion: {
     publicUrl: process.env.REMOTION_PUBLIC_URL ?? 'http://localhost:3000',
     chromiumHeadless: process.env.REMOTION_CHROMIUM_HEADLESS !== 'false',

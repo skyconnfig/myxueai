@@ -133,7 +133,8 @@ function handleLogout() {
       </div>
       <ul class="pl-12 space-y-2 text-xs text-muted m-0 list-none">
         <li><code class="text-accent-blue">OPENAI_API_KEY</code> — DALL·E 3 分镜配图</li>
-        <li><code class="text-accent-blue">ELEVENLABS_API_KEY</code> — 多语言 TTS 配音</li>
+        <li><code class="text-accent-blue">TTS_MODEL</code> — 网关配音（默认 speech-2.8-hd，同步可用 tts-1）</li>
+        <li><code class="text-accent-blue">ELEVENLABS_API_KEY</code> — ElevenLabs 配音（可选，优先于网关）</li>
         <li><code class="text-accent-blue">LLM_API_KEY</code> — AI 脚本生成（DeepSeek 等）</li>
       </ul>
     </section>
