@@ -59,6 +59,8 @@ model Scene {
   description  String
   visualPrompt String?
   voiceText    String?
+  voiceId      String?   @default("lyrical")
+  voiceEmotion String?   @default("professional")
   duration     Int
   imageUrl     String?
   videoUrl     String?

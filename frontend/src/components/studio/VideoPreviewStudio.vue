@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import {
+  Maximize2,
   Mic,
+  Minimize2,
   Pause,
   Palette,
   Play,
@@ -13,6 +15,7 @@ import {
   Volume2,
   VolumeX,
   Wand2,
+  X,
 } from 'lucide-vue-next'
 import type { DemoScene } from '@/data/mockData'
 import type { VideoRatio } from '@/types'
@@ -45,10 +48,44 @@ const emit = defineEmits<{
   editSubtitles: []
 }>()
 
-const previewSizeClass = computed(() => {
+const previewSizeClass = computed(() => previewFrameClass(false))
+
+function previewFrameClass(fullscreen: boolean) {
+  if (fullscreen) {
+    if (props.ratio === '16:9') return 'w-full max-w-[min(92vw,calc(78vh*16/9))] aspect-video max-h-[78vh]'
+    if (props.ratio === '1:1') return 'w-[min(78vh,92vw)] h-[min(78vh,92vw)] max-w-full max-h-[78vh]'
+    return 'h-[78vh] w-auto aspect-[9/16] max-w-[92vw]'
+  }
   if (props.ratio === '16:9') return 'w-[520px] h-[290px]'
   if (props.ratio === '1:1') return 'w-[320px] h-[320px]'
   return 'w-[220px] h-[380px]'
+}
+
+const isFullscreen = ref(false)
+
+function openFullscreen() {
+  if (!props.scene || !props.hasScenes) return
+  isFullscreen.value = true
+  document.body.style.overflow = 'hidden'
+}
+
+function closeFullscreen() {
+  isFullscreen.value = false
+  document.body.style.overflow = ''
+}
+
+function onFullscreenKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') closeFullscreen()
+}
+
+watch(isFullscreen, (open) => {
+  if (open) window.addEventListener('keydown', onFullscreenKeydown)
+  else window.removeEventListener('keydown', onFullscreenKeydown)
+})
+
+onUnmounted(() => {
+  document.body.style.overflow = ''
+  window.removeEventListener('keydown', onFullscreenKeydown)
 })
 
 const aiActions = [
@@ -205,15 +242,24 @@ watch(
       />
       <div
         v-if="scene && hasScenes"
-        class="relative rounded-2xl overflow-hidden shadow-glow-purple border border-border/80 flex items-center justify-center max-h-[380px] bg-black"
+        class="relative rounded-2xl overflow-hidden shadow-glow-purple border border-border/80 flex items-center justify-center max-h-[380px] bg-black group cursor-pointer"
         :class="previewSizeClass"
+        @dblclick="openFullscreen"
       >
         <img :src="scene.imageUrl" :alt="scene.title" class="w-full h-full object-cover" />
         <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 pointer-events-none" />
+        <button
+          type="button"
+          class="absolute top-3 right-3 p-1.5 rounded-lg bg-black/50 text-white/80 hover:text-white hover:bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+          title="全屏预览"
+          @click.stop="openFullscreen"
+        >
+          <Maximize2 class="w-4 h-4" />
+        </button>
         <div class="absolute top-3 left-3 px-2 py-0.5 glass-panel text-[10px] font-mono text-accent-blue rounded-lg">
           {{ scene.cameraAngle }}
         </div>
-        <div class="absolute top-3 right-3 flex flex-col items-end gap-1">
+        <div class="absolute top-12 right-3 flex flex-col items-end gap-1">
           <span class="px-2 py-0.5 glass-panel text-[10px] font-mono text-white rounded-lg">
             {{ currentTime.toFixed(1) }}s / {{ totalDuration }}s
           </span>
@@ -298,7 +344,119 @@ watch(
           <VolumeX v-if="isMuted" class="w-4 h-4" />
           <Volume2 v-else class="w-4 h-4" />
         </button>
+        <button
+          type="button"
+          class="btn-nav !w-auto !p-1.5"
+          :disabled="!scene || !hasScenes"
+          title="全屏预览"
+          @click="openFullscreen"
+        >
+          <Maximize2 class="w-4 h-4" />
+        </button>
       </div>
     </div>
+
+    <Teleport to="body">
+      <div
+        v-if="isFullscreen && scene && hasScenes"
+        class="fixed inset-0 z-[2000] bg-black/95 backdrop-blur-sm flex flex-col"
+      >
+        <div class="flex items-center justify-between px-5 py-3 border-b border-white/10 shrink-0">
+          <div class="min-w-0">
+            <div class="text-sm font-semibold text-white truncate">{{ projectName }}</div>
+            <div class="text-[11px] text-muted font-mono mt-0.5">
+              {{ ratio }} · {{ totalDuration }}s · {{ style }}
+            </div>
+          </div>
+          <button
+            type="button"
+            class="btn-nav !w-auto !px-3 !py-2 flex items-center gap-2"
+            @click="closeFullscreen"
+          >
+            <Minimize2 class="w-4 h-4" />
+            退出全屏
+          </button>
+        </div>
+
+        <div class="flex-1 flex flex-col items-center justify-center min-h-0 px-4 py-6 gap-6">
+          <div
+            class="relative rounded-2xl overflow-hidden border border-white/15 shadow-2xl bg-black flex items-center justify-center"
+            :class="previewFrameClass(true)"
+          >
+            <img :src="scene.imageUrl" :alt="scene.title" class="w-full h-full object-cover" />
+            <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/25 pointer-events-none" />
+            <div class="absolute top-4 left-4 px-2.5 py-1 glass-panel text-xs font-mono text-accent-blue rounded-lg">
+              {{ scene.cameraAngle }}
+            </div>
+            <div class="absolute top-4 right-4 flex flex-col items-end gap-1.5">
+              <span class="px-2.5 py-1 glass-panel text-xs font-mono text-white rounded-lg">
+                {{ currentTime.toFixed(1) }}s / {{ totalDuration }}s
+              </span>
+              <span
+                v-if="hasAudio"
+                class="px-2.5 py-1 glass-panel text-xs font-mono rounded-lg"
+                :class="isMuted ? 'text-muted' : 'text-success'"
+              >
+                {{ isMuted ? '配音已静音' : '配音已就绪' }}
+              </span>
+            </div>
+            <div
+              v-if="showSubtitles"
+              class="absolute bottom-8 left-6 right-6 text-center px-4 py-3 glass-panel rounded-xl"
+            >
+              <span class="text-base sm:text-lg font-semibold text-white tracking-wide leading-relaxed">
+                {{ scene.voice }}
+              </span>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3 btn-soft !h-auto !px-4 !py-3 !rounded-xl w-full max-w-2xl">
+            <button type="button" class="btn-nav !w-auto !p-2" @click="emit('update:currentTime', 0)">
+              <RotateCcw class="w-5 h-5" />
+            </button>
+            <button
+              type="button"
+              class="btn-soft btn-soft--primary !w-11 !h-11 !p-0 !rounded-xl"
+              @click="togglePlay"
+            >
+              <Pause v-if="isPlaying" class="w-5 h-5 text-accent-blue fill-current" />
+              <Play v-else class="w-5 h-5 text-accent-blue fill-current ml-0.5" />
+            </button>
+            <input
+              :value="currentTime"
+              type="range"
+              :min="0"
+              :max="totalDuration || 1"
+              step="0.1"
+              class="flex-1 accent-accent-blue cursor-pointer min-w-0"
+              @input="emit('update:currentTime', Number(($event.target as HTMLInputElement).value))"
+            />
+            <span class="font-mono text-sm text-muted shrink-0">
+              00:{{ Math.floor(currentTime).toString().padStart(2, '0') }}
+            </span>
+            <button
+              type="button"
+              class="btn-nav !w-auto !p-2"
+              :class="showSubtitles ? 'btn-nav--active' : ''"
+              @click="emit('update:showSubtitles', !showSubtitles)"
+            >
+              <Type class="w-5 h-5" :class="showSubtitles ? 'text-accent-blue' : ''" />
+            </button>
+            <button
+              type="button"
+              class="btn-nav !w-auto !p-2"
+              :class="isMuted ? 'btn-nav--active' : ''"
+              @click="emit('update:isMuted', !isMuted)"
+            >
+              <VolumeX v-if="isMuted" class="w-5 h-5" />
+              <Volume2 v-else class="w-5 h-5" />
+            </button>
+            <button type="button" class="btn-nav !w-auto !p-2" title="退出全屏" @click="closeFullscreen">
+              <X class="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>

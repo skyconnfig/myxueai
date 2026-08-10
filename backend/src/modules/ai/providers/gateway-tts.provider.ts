@@ -51,7 +51,13 @@ export class GatewayTtsProvider {
     return model.startsWith('speech-')
   }
 
-  async generate(text: string, durationHintSec?: number): Promise<VoiceGenerationResult> {
+  async generate(text: string, options?: {
+    durationHintSec?: number
+    voiceId?: string
+    speed?: number
+    pitch?: number
+    volume?: number
+  }): Promise<VoiceGenerationResult> {
     if (!config.tts.apiKey) {
       throw new AppError(503, 'TTS_NOT_CONFIGURED', '未配置 TTS API Key，无法生成配音')
     }
@@ -61,9 +67,14 @@ export class GatewayTtsProvider {
       throw new AppError(400, 'EMPTY_VOICE_TEXT', '配音文本为空')
     }
 
+    const voiceId = options?.voiceId ?? config.tts.voice
+    const speed = options?.speed ?? config.tts.speed
+    const pitch = options?.pitch ?? config.tts.pitch
+    const volume = options?.volume ?? config.tts.volume
+
     const buffer = this.isMinimaxModel()
-      ? await this.generateMinimax(trimmed)
-      : await this.generateOpenAiSpeech(trimmed)
+      ? await this.generateMinimax(trimmed, { voiceId, speed, pitch, volume })
+      : await this.generateOpenAiSpeech(trimmed, voiceId)
 
     if (buffer.length < 128) {
       throw new AppError(502, 'TTS_EMPTY', 'TTS 返回音频为空')
@@ -73,9 +84,9 @@ export class GatewayTtsProvider {
       buffer,
       ext: '.mp3',
       provider: 'xueai-gateway',
-      voiceId: config.tts.voice,
+      voiceId,
       model: config.tts.model,
-      durationEstimate: durationHintSec,
+      durationEstimate: options?.durationHintSec,
     }
   }
 
@@ -87,7 +98,7 @@ export class GatewayTtsProvider {
   }
 
   /** OpenAI-compatible sync TTS: tts-1 / gpt-4o-mini-tts */
-  private async generateOpenAiSpeech(text: string): Promise<Buffer> {
+  private async generateOpenAiSpeech(text: string, voice = config.tts.openAiVoice): Promise<Buffer> {
     const baseUrl = config.tts.baseUrl.replace(/\/$/, '')
     const response = await fetch(`${baseUrl}/audio/speech`, {
       method: 'POST',
@@ -95,7 +106,7 @@ export class GatewayTtsProvider {
       body: JSON.stringify({
         model: config.tts.model,
         input: text.slice(0, 5000),
-        voice: config.tts.openAiVoice,
+        voice,
       }),
     })
 
@@ -108,7 +119,10 @@ export class GatewayTtsProvider {
   }
 
   /** Minimax async TTS via xueai gateway: speech-2.8-hd 等 */
-  private async generateMinimax(text: string): Promise<Buffer> {
+  private async generateMinimax(
+    text: string,
+    settings: { voiceId: string; speed: number; pitch: number; volume: number },
+  ): Promise<Buffer> {
     const baseUrl = config.tts.minimaxBaseUrl.replace(/\/$/, '')
     const createRes = await fetch(`${baseUrl}/t2a_async_v2`, {
       method: 'POST',
@@ -118,10 +132,10 @@ export class GatewayTtsProvider {
         text: text.slice(0, 5000),
         language_boost: config.tts.languageBoost,
         voice_setting: {
-          voice_id: config.tts.voice,
-          speed: config.tts.speed,
-          vol: config.tts.volume,
-          pitch: config.tts.pitch,
+          voice_id: settings.voiceId,
+          speed: settings.speed,
+          vol: settings.volume,
+          pitch: settings.pitch,
         },
         audio_setting: {
           format: 'mp3',

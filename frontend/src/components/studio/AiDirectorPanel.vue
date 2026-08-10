@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { NSelect } from 'naive-ui'
 import { Image as ImageIcon, Lightbulb, Sparkles, Star, Trash2, Volume2 } from 'lucide-vue-next'
+import { VOICE_EMOTIONS, VOICE_PRESETS, resolveVoiceSettings } from '@xueai/shared'
 import type { DemoScene } from '@/data/mockData'
 
 const props = defineProps<{
@@ -15,6 +17,21 @@ const emit = defineEmits<{
   saveDraft: []
   startRender: []
 }>()
+
+const voiceOptions = VOICE_PRESETS.map((item) => ({
+  label: `${item.label} · ${item.subtitle}`,
+  value: item.id,
+}))
+
+const emotionOptions = VOICE_EMOTIONS.map((item) => ({
+  label: item.label,
+  value: item.id,
+}))
+
+const voiceDisplay = computed(() => {
+  if (!props.scene) return null
+  return resolveVoiceSettings(props.scene.voiceId, props.scene.voiceEmotion)
+})
 
 const aiSuggestion = computed(() => {
   if (!props.scene) return null
@@ -67,7 +84,7 @@ const visualScore = computed(() => {
       <p class="m-0 leading-relaxed opacity-90">{{ aiSuggestion.text }}</p>
     </div>
 
-    <div class="grid grid-cols-2 gap-2 text-xs">
+    <div class="space-y-2 text-xs">
       <div class="glass-panel p-3">
         <div class="text-muted text-[11px] mb-1">视觉风格</div>
         <div class="flex items-center gap-0.5">
@@ -79,13 +96,29 @@ const visualScore = computed(() => {
           />
         </div>
       </div>
-      <div class="glass-panel p-3">
+      <div class="glass-panel p-3 space-y-2">
         <div class="text-muted text-[11px] mb-1 flex items-center gap-1">
           <Volume2 class="w-3 h-3" />
-          声音
+          声音配置
         </div>
-        <div class="text-white font-medium">{{ scene.voiceoverActor }}</div>
-        <div class="text-muted text-[10px] mt-0.5">情绪：专业</div>
+        <NSelect
+          :value="scene.voiceId ?? 'lyrical'"
+          :options="voiceOptions"
+          size="small"
+          placeholder="选择配音音色"
+          @update:value="emit('update', { voiceId: $event, voiceoverActor: resolveVoiceSettings($event, scene.voiceEmotion).displayName })"
+        />
+        <NSelect
+          :value="scene.voiceEmotion ?? 'professional'"
+          :options="emotionOptions"
+          size="small"
+          placeholder="选择情绪风格"
+          @update:value="emit('update', { voiceEmotion: $event, voiceoverActor: resolveVoiceSettings(scene.voiceId, $event).displayName })"
+        />
+        <div v-if="voiceDisplay" class="text-[10px] text-muted pt-0.5">
+          当前：{{ voiceDisplay.displayName }} · 情绪：{{ voiceDisplay.emotionLabel }}
+        </div>
+        <div class="text-[10px] text-accent-blue/80">更改音色后请点击「重新配音」生效</div>
       </div>
     </div>
 

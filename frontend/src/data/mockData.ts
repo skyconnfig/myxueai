@@ -9,6 +9,8 @@ export interface DemoScene {
   cameraAngle: string
   imageUrl: string
   audioUrl?: string
+  voiceId?: string
+  voiceEmotion?: string
   voiceoverActor: string
   transition: string
   bgmCategory: string

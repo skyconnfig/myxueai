@@ -1,6 +1,7 @@
 import { computed, onActivated, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMessage } from 'naive-ui'
+import { resolveVoiceSettings } from '@xueai/shared'
 import { generateScript, optimizeScript } from '@/api/script'
 import { startProduction, regenerateVoice } from '@/api/production'
 import { updateScene as patchScene } from '@/api/scene'
@@ -16,6 +17,7 @@ export type StudioStep = 'inspire' | 'script' | 'storyboard' | 'material' | 'edi
 const DEFAULT_IMAGE = DEMO_ASSETS[0]?.url ?? ''
 
 function mapScene(scene: Scene): DemoScene {
+  const voice = resolveVoiceSettings(scene.voiceId, scene.voiceEmotion)
   return {
     id: scene.id,
     index: scene.order,
@@ -27,7 +29,9 @@ function mapScene(scene: Scene): DemoScene {
     cameraAngle: '特写推镜头',
     imageUrl: scene.imageUrl ?? DEFAULT_IMAGE,
     audioUrl: scene.audioUrl ?? undefined,
-    voiceoverActor: '云希 (科技专业)',
+    voiceId: scene.voiceId ?? 'lyrical',
+    voiceEmotion: scene.voiceEmotion ?? 'professional',
+    voiceoverActor: voice.displayName,
     transition: 'Fade Up',
     bgmCategory: '科技脉冲',
   }
@@ -220,6 +224,8 @@ export function useVideoPlanStudio() {
           voiceText: patch.voice ?? scene.voiceText,
           duration: patch.duration ?? scene.duration,
           imageUrl: patch.imageUrl ?? scene.imageUrl,
+          voiceId: patch.voiceId ?? scene.voiceId,
+          voiceEmotion: patch.voiceEmotion ?? scene.voiceEmotion,
         }
       }),
     }
@@ -236,6 +242,8 @@ export function useVideoPlanStudio() {
       ...(patch.voice !== undefined ? { voiceText: patch.voice } : {}),
       ...(patch.duration !== undefined ? { duration: patch.duration } : {}),
       ...(patch.imageUrl !== undefined ? { imageUrl: patch.imageUrl } : {}),
+      ...(patch.voiceId !== undefined ? { voiceId: patch.voiceId } : {}),
+      ...(patch.voiceEmotion !== undefined ? { voiceEmotion: patch.voiceEmotion } : {}),
     }
     if (Object.keys(apiPatch).length === 0) return
 
@@ -378,6 +386,8 @@ export function useVideoPlanStudio() {
       duration: 8,
       cameraAngle: '特写',
       imageUrl: DEMO_ASSETS[0].url,
+      voiceId: 'lyrical',
+      voiceEmotion: 'professional',
       voiceoverActor: '云希 (科技专业)',
       transition: 'Fade Up',
       bgmCategory: '科技律动',

@@ -1,12 +1,12 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import type { AssetDto } from '@xueai/shared'
+import { resolveVoiceSettings } from '@xueai/shared'
 import { AppError } from '../../middleware/error-handler.js'
 import { storagePaths } from '../../config/storage.js'
 import { openAiImageProvider } from '../ai/providers/openai-image.provider.js'
 import { elevenLabsProvider } from '../ai/providers/elevenlabs.provider.js'
 import { gatewayTtsProvider } from '../ai/providers/gateway-tts.provider.js'
-import { config } from '../../config/index.js'
 import { logger } from '../../utils/logger.js'
 import { AssetType } from '../../constants/status.js'
 import { projectRepository } from '../project/project.repository.js'
@@ -239,18 +239,28 @@ export class AssetService {
       }
 
       const voiceText = scene.voiceText?.trim() || scene.description
+      const voiceSettings = resolveVoiceSettings(scene.voiceId, scene.voiceEmotion)
       let dest: string
       let url: string
       let provider: string
-      let metadata: Record<string, unknown> = { voiceText }
+      let metadata: Record<string, unknown> = {
+        voiceText,
+        voicePresetId: voiceSettings.preset.id,
+        voiceEmotionId: voiceSettings.emotion.id,
+      }
       let audioDuration = scene.duration
-      let voiceMeta = config.elevenLabs.voiceId
+      let voiceMeta = voiceSettings.minimaxVoiceId
 
       if (voiceText && (useElevenLabs || useGatewayTts)) {
         try {
           const generated = useElevenLabs
             ? await elevenLabsProvider.generate(voiceText, scene.duration)
-            : await gatewayTtsProvider.generate(voiceText, scene.duration)
+            : await gatewayTtsProvider.generate(voiceText, {
+                durationHintSec: scene.duration,
+                voiceId: voiceSettings.minimaxVoiceId,
+                speed: voiceSettings.speed,
+                pitch: voiceSettings.pitch,
+              })
           const filename = `voice-${projectId}-${scene.order}${generated.ext}`
           dest = path.join(storagePaths.audio, filename)
           fs.mkdirSync(path.dirname(dest), { recursive: true })

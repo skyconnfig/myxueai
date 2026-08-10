@@ -27,6 +27,8 @@ export const updateSceneSchema = z.object({
   description: z.string().optional(),
   visualPrompt: z.string().optional(),
   voiceText: z.string().optional(),
+  voiceId: z.string().optional(),
+  voiceEmotion: z.string().optional(),
   duration: z.number().int().min(1).max(120).optional(),
   imageUrl: z.string().url().optional().or(z.literal('')),
 })

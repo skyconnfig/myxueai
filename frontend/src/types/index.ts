@@ -50,6 +50,8 @@ export interface Scene {
   description: string
   visualPrompt?: string | null
   voiceText?: string | null
+  voiceId?: string | null
+  voiceEmotion?: string | null
   duration: number
   imageUrl?: string | null
   videoUrl?: string | null
@@ -62,6 +64,8 @@ export interface UpdateScenePayload {
   description?: string
   visualPrompt?: string
   voiceText?: string
+  voiceId?: string
+  voiceEmotion?: string
   duration?: number
   imageUrl?: string
 }

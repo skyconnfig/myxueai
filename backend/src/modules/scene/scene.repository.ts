@@ -14,6 +14,8 @@ export class SceneRepository {
         ...(data.description !== undefined ? { description: data.description } : {}),
         ...(data.visualPrompt !== undefined ? { visualPrompt: data.visualPrompt } : {}),
         ...(data.voiceText !== undefined ? { voiceText: data.voiceText } : {}),
+        ...(data.voiceId !== undefined ? { voiceId: data.voiceId } : {}),
+        ...(data.voiceEmotion !== undefined ? { voiceEmotion: data.voiceEmotion } : {}),
         ...(data.duration !== undefined ? { duration: data.duration } : {}),
         ...(data.imageUrl !== undefined ? { imageUrl: data.imageUrl || null } : {}),
       },

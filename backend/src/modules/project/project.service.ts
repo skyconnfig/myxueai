@@ -35,6 +35,8 @@ function toProjectDto(project: NonNullable<Awaited<ReturnType<typeof projectRepo
         description: scene.description,
         visualPrompt: scene.visualPrompt,
         voiceText: scene.voiceText,
+        voiceId: scene.voiceId,
+        voiceEmotion: scene.voiceEmotion,
         duration: scene.duration,
         imageUrl: scene.imageUrl,
         videoUrl: scene.videoUrl,

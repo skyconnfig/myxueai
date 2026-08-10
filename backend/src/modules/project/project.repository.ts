@@ -65,6 +65,8 @@ export class ProjectRepository {
       description: string
       visualPrompt?: string | null
       voiceText?: string | null
+      voiceId?: string | null
+      voiceEmotion?: string | null
       duration: number
       imageUrl?: string | null
     }>,
@@ -80,6 +82,8 @@ export class ProjectRepository {
             description: scene.description,
             visualPrompt: scene.visualPrompt,
             voiceText: scene.voiceText,
+            voiceId: scene.voiceId ?? 'lyrical',
+            voiceEmotion: scene.voiceEmotion ?? 'professional',
             duration: scene.duration,
             imageUrl: scene.imageUrl,
           })),
@@ -109,6 +113,8 @@ export class ProjectRepository {
       description?: string
       visualPrompt?: string | null
       voiceText?: string | null
+      voiceId?: string | null
+      voiceEmotion?: string | null
       duration?: number
     }>,
   ) {
@@ -121,6 +127,8 @@ export class ProjectRepository {
             ...(scene.description !== undefined ? { description: scene.description } : {}),
             ...(scene.visualPrompt !== undefined ? { visualPrompt: scene.visualPrompt } : {}),
             ...(scene.voiceText !== undefined ? { voiceText: scene.voiceText } : {}),
+            ...(scene.voiceId !== undefined ? { voiceId: scene.voiceId } : {}),
+            ...(scene.voiceEmotion !== undefined ? { voiceEmotion: scene.voiceEmotion } : {}),
             ...(scene.duration !== undefined ? { duration: scene.duration } : {}),
           },
         })

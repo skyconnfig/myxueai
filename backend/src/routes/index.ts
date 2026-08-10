@@ -9,6 +9,7 @@ import renderRoutes from '../modules/render/render.routes.js'
 import taskRoutes from '../modules/task/task.routes.js'
 import videoRoutes from '../modules/video/video.routes.js'
 import workspaceRoutes from '../modules/workspace/workspace.routes.js'
+import voiceRoutes from '../modules/voice/voice.routes.js'
 import { sendSuccess } from '../utils/response.js'
 
 const router = Router()
@@ -30,6 +31,7 @@ router.use('/ai', aiRoutes)
 router.use('/assets', assetRoutes)
 router.use('/tasks', taskRoutes)
 router.use('/workspace', workspaceRoutes)
+router.use('/voice', voiceRoutes)
 router.use('/render', renderRoutes)
 
 export default router
