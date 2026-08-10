@@ -34,6 +34,16 @@ export class ProductionController {
       return next(error)
     }
   }
+
+  generateImages = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const sceneId = typeof req.query.sceneId === 'string' ? req.query.sceneId : undefined
+      const data = await productionService.generateImages(String(req.params.id), sceneId)
+      return sendSuccess(res, data, 'Images generated')
+    } catch (error) {
+      return next(error)
+    }
+  }
 }
 
 export const productionController = new ProductionController()

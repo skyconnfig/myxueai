@@ -254,6 +254,20 @@ export class ProductionService {
     return projectService.getProject(projectId)
   }
 
+  async generateImages(projectId: string, sceneId?: string) {
+    const project = await projectRepository.findById(projectId)
+    if (!project) throw new AppError(404, 'PROJECT_NOT_FOUND', 'Project not found')
+    if (project.scenes.length === 0) {
+      throw new AppError(400, 'NO_SCENES', '请先生成 AI 分镜')
+    }
+
+    await assetService.generateImagesForProject(projectId, undefined, {
+      sceneId,
+      force: Boolean(sceneId),
+    })
+    return projectService.getProject(projectId)
+  }
+
   async start(projectId: string, userId?: string) {
     const project = await projectRepository.findById(projectId)
     if (!project) throw new AppError(404, 'PROJECT_NOT_FOUND', 'Project not found')

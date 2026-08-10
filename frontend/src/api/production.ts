@@ -46,3 +46,11 @@ export function regenerateVoice(projectId: string) {
     method: 'POST',
   })
 }
+
+export function generateSceneImages(projectId: string, sceneId?: string) {
+  return request<ProjectDetail>({
+    url: `/projects/${projectId}/production/images`,
+    method: 'POST',
+    params: sceneId ? { sceneId } : undefined,
+  })
+}

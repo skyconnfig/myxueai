@@ -39,6 +39,7 @@ function toProjectDto(project: NonNullable<Awaited<ReturnType<typeof projectRepo
         voiceEmotion: scene.voiceEmotion,
         duration: scene.duration,
         imageUrl: scene.imageUrl,
+        imageSource: scene.imageSource,
         videoUrl: scene.videoUrl,
         audioUrl: audioAsset?.url ?? null,
         audioProvider: audioAsset?.provider ?? null,

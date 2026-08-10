@@ -63,6 +63,7 @@ model Scene {
   voiceEmotion String?   @default("professional")
   duration     Int
   imageUrl     String?
+  imageSource  String?
   videoUrl     String?
   assets       Asset[]
   captions     Caption[]

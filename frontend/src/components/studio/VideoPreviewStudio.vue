@@ -212,7 +212,7 @@ watch(
           <Wand2 class="w-4 h-4 text-accent-blue" />
           AI 生成预览
         </div>
-        <p class="text-[11px] text-muted m-0 mt-0.5 truncate max-w-[280px]">{{ projectName }}</p>
+        <p class="ui-meta-line m-0 mt-0.5 truncate max-w-[280px]">{{ projectName }}</p>
       </div>
       <div class="flex items-center gap-4 text-[11px] font-mono">
         <div class="text-center">
@@ -246,7 +246,20 @@ watch(
         :class="previewSizeClass"
         @dblclick="openFullscreen"
       >
-        <img :src="scene.imageUrl" :alt="scene.title" class="w-full h-full object-cover" />
+        <img
+          v-if="scene.imageUrl"
+          :src="scene.imageUrl"
+          :alt="scene.title"
+          class="w-full h-full object-cover"
+        />
+        <div
+          v-else
+          class="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-gradient-to-br from-slate-900 via-slate-800 to-blue-950"
+        >
+          <Sparkles class="w-8 h-8 text-accent-blue mb-3 opacity-80" />
+          <p class="text-xs text-accent-blue font-mono m-0 mb-2">正在生成匹配画面...</p>
+          <p class="text-sm text-white/90 m-0 leading-relaxed line-clamp-4">{{ scene.visual || scene.voice }}</p>
+        </div>
         <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 pointer-events-none" />
         <button
           type="button"
@@ -383,7 +396,20 @@ watch(
             class="relative rounded-2xl overflow-hidden border border-white/15 shadow-2xl bg-black flex items-center justify-center"
             :class="previewFrameClass(true)"
           >
-            <img :src="scene.imageUrl" :alt="scene.title" class="w-full h-full object-cover" />
+            <img
+              v-if="scene.imageUrl"
+              :src="scene.imageUrl"
+              :alt="scene.title"
+              class="w-full h-full object-cover"
+            />
+            <div
+              v-else
+              class="w-full h-full flex flex-col items-center justify-center p-8 text-center bg-gradient-to-br from-slate-900 via-slate-800 to-blue-950"
+            >
+              <Sparkles class="w-10 h-10 text-accent-blue mb-4 opacity-80" />
+              <p class="text-sm text-accent-blue font-mono m-0 mb-3">正在生成匹配画面...</p>
+              <p class="text-base text-white/90 m-0 leading-relaxed max-w-md">{{ scene.visual || scene.voice }}</p>
+            </div>
             <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/25 pointer-events-none" />
             <div class="absolute top-4 left-4 px-2.5 py-1 glass-panel text-xs font-mono text-accent-blue rounded-lg">
               {{ scene.cameraAngle }}

@@ -54,6 +54,7 @@ export interface Scene {
   voiceEmotion?: string | null
   duration: number
   imageUrl?: string | null
+  imageSource?: 'ai' | 'manual' | null
   videoUrl?: string | null
   audioUrl?: string | null
   audioProvider?: string | null
@@ -68,6 +69,7 @@ export interface UpdateScenePayload {
   voiceEmotion?: string
   duration?: number
   imageUrl?: string
+  imageSource?: 'ai' | 'manual'
 }
 
 export interface GenerateScriptPayload {

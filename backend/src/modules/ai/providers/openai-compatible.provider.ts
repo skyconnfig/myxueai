@@ -55,8 +55,11 @@ export class OpenAICompatibleProvider {
 要求：
 - 生成 4 到 6 个紧凑有节奏的分镜
 - duration 字段为所有 scenes.duration 之和
-- voice 为可直接配音的口播文案
-- visual 为可用于 AI 生图的画面描述`
+- voice 为可直接配音的口播文案，口语化、像真人在说话
+- visual 必须与 voice、description 描述同一画面内容，可直接用于 AI 生图
+- 每个分镜的 visual 要具体：主体、场景、动作、光影、构图、情绪
+- 禁止 visual 与 voice 脱节（例如口播讲团队协作，画面却是电路板）
+- 结尾分镜 visual 必须体现 voice 中的号召动作（注册、下载、关注等）`
 
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
@@ -142,7 +145,9 @@ ${JSON.stringify({ scenes: input.scenes }, null, 2)}
 要求：
 - scenes 数量必须与输入一致，index 顺序不变
 - voice 更口语化、有钩子，单镜口播建议 15-35 字
-- visual 更具体、可生图，含镜头/光影/构图
+- visual 必须与 voice、description 一致，像真实拍摄镜头一样具体
+- visual 需包含：主体是谁/什么、在哪、在做什么、画面情绪、镜头构图
+- 若优化了 visual，必须同步调整 description，确保三者讲同一件事
 - duration 可微调，但总和接近 ${input.duration ?? 60} 秒`
 
     const response = await fetch(`${this.baseUrl}/chat/completions`, {

@@ -109,6 +109,14 @@ function taskStatusLabel(status: string) {
   return TASK_STATUS_LABELS[status] ?? status
 }
 
+function taskStatusMetaClass(status: string) {
+  if (status === 'RUNNING') return 'ui-meta-line--running'
+  if (status === 'WAITING') return 'ui-meta-line--waiting'
+  if (status === 'SUCCESS') return 'ui-meta-line--success'
+  if (status === 'FAILED') return 'ui-meta-line--failed'
+  return ''
+}
+
 function canStopTask(status: string) {
   return status === 'RUNNING' || status === 'WAITING'
 }
@@ -462,20 +470,18 @@ function selectProject(id: string) {
             <div
               v-for="task in displayTasks.slice(0, 10)"
               :key="task.id"
-              class="rounded-lg border border-border/60 bg-dark/40 px-2 py-2 space-y-1.5"
+              class="ui-card !p-2 space-y-1.5"
             >
 
               <button
                 type="button"
-                class="w-full flex items-start gap-2 text-left"
+                class="w-full text-left"
                 @click="openTaskProject(task)"
               >
-                <div class="min-w-0 flex-1">
-                  <div class="text-white text-xs truncate">{{ task.projectName }}</div>
-                  <div class="text-[10px] text-muted mt-0.5">
-                    {{ taskTypeLabel(task.type) }} · {{ taskStatusLabel(task.status) }}
-                    <span v-if="task.status === 'RUNNING'" class="text-accent-blue font-mono"> · {{ task.progress }}%</span>
-                  </div>
+                <div class="ui-card__title truncate">{{ task.projectName }}</div>
+                <div class="ui-meta-line" :class="taskStatusMetaClass(task.status)">
+                  {{ taskTypeLabel(task.type) }} · {{ taskStatusLabel(task.status) }}
+                  <span v-if="task.status === 'RUNNING'"> · {{ task.progress }}%</span>
                 </div>
               </button>
 

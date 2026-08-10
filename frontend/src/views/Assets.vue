@@ -82,44 +82,46 @@ onMounted(loadAssets)
   <div class="p-6 space-y-6 max-w-7xl mx-auto">
     <input ref="fileInput" type="file" class="hidden" accept="image/*,audio/*,video/*" @change="onFileChange" />
 
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#2A303C] pb-4">
-      <div>
-        <h1 class="text-xl font-bold text-white flex items-center gap-2 m-0">
-          <Layers class="w-5 h-5 text-[#2563EB]" />
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-4">
+      <div class="ui-page-header">
+        <h1 class="ui-page-header__title">
+          <Layers class="w-5 h-5 text-accent-blue" />
           素材资产库
         </h1>
-        <p class="text-xs text-[#A3A8B3] mt-0.5 mb-0">统一管理图片、音频、视频素材</p>
+        <p class="ui-page-header__subtitle">统一管理图片、音频、视频素材</p>
       </div>
       <button
-        class="px-4 h-9 bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 shrink-0 disabled:opacity-50"
+        type="button"
+        class="btn-soft btn-soft--primary !h-9 !px-4 !text-xs shrink-0 disabled:opacity-50"
         :disabled="uploading"
         @click="openUpload"
       >
-        <Upload class="w-4 h-4" />
+        <Upload class="w-4 h-4 text-accent-blue" />
         {{ uploading ? '上传中...' : '上传新素材' }}
       </button>
     </div>
 
-    <div class="bg-[#151922] p-4 border border-[#2A303C] rounded-xl space-y-3">
+    <div class="glass-panel p-4 space-y-3">
       <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div class="flex items-center bg-[#1B202A] p-1 border border-[#2A303C] rounded-lg">
+        <div class="ui-segment">
           <button
             v-for="tab in ([['all', '全部资产'], ['IMAGE', '图片/渲染'], ['AUDIO', '音频/BGM'], ['VIDEO', '视频片段']] as const)"
             :key="tab[0]"
-            class="px-3 py-1.5 rounded text-xs transition-colors"
-            :class="activeTab === tab[0] ? 'bg-[#2563EB] text-white font-medium' : 'text-[#A3A8B3] hover:text-white'"
+            type="button"
+            class="ui-segment__tab"
+            :class="activeTab === tab[0] ? 'ui-segment__tab--active' : ''"
             @click="activeTab = tab[0] as typeof activeTab"
           >
             {{ tab[1] }}
           </button>
         </div>
         <div class="relative w-full sm:w-64">
-          <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A3A8B3]" />
+          <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
           <input
             v-model="searchTerm"
             type="text"
             placeholder="搜索素材..."
-            class="w-full bg-[#1B202A] border border-[#2A303C] rounded-lg pl-9 pr-3 py-2 text-xs text-white placeholder-[#A3A8B3] focus:outline-none focus:border-[#2563EB]"
+            class="ui-input !pl-9"
           />
         </div>
       </div>
@@ -132,20 +134,21 @@ onMounted(loadAssets)
       <div
         v-for="asset in filtered"
         :key="asset.id"
-        class="pro-card overflow-hidden group hover:border-[#2563EB]/50 transition-all"
+        class="pro-card overflow-hidden group hover:border-accent-blue/40 transition-all"
       >
-        <div class="aspect-square bg-[#0B0D10] flex items-center justify-center relative overflow-hidden">
+        <div class="aspect-square bg-dark flex items-center justify-center relative overflow-hidden">
           <img
             v-if="asset.type === 'IMAGE'"
             :src="asset.url"
             :alt="assetTitle(asset)"
             class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
-          <component :is="typeIcons[asset.type] ?? ImageIcon" v-else class="w-8 h-8 text-[#2A303C]" />
-          <span class="absolute top-2 left-2 px-1.5 py-0.5 bg-[#0B0D10]/80 border border-[#2A303C] text-[9px] font-mono text-[#A3A8B3] rounded">
+          <component :is="typeIcons[asset.type] ?? ImageIcon" v-else class="w-8 h-8 text-border" />
+          <span class="absolute top-2 left-2 px-1.5 py-0.5 glass-panel text-[9px] font-mono text-muted rounded">
             {{ asset.type }}
           </span>
           <button
+            type="button"
             class="absolute top-2 right-2 px-1.5 py-0.5 bg-danger/80 text-white text-[9px] rounded opacity-0 group-hover:opacity-100"
             @click.stop="handleDelete(asset.id)"
           >
@@ -153,8 +156,8 @@ onMounted(loadAssets)
           </button>
         </div>
         <div class="p-3 space-y-1">
-          <div class="text-xs font-medium text-white truncate">{{ assetTitle(asset) }}</div>
-          <div class="text-[10px] text-[#A3A8B3] font-mono truncate">{{ asset.provider ?? 'local' }}</div>
+          <div class="ui-card__title truncate">{{ assetTitle(asset) }}</div>
+          <div class="ui-meta-line">{{ asset.provider ?? 'local' }}</div>
         </div>
       </div>
     </div>

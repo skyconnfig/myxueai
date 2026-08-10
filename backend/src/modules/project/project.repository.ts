@@ -116,6 +116,8 @@ export class ProjectRepository {
       voiceId?: string | null
       voiceEmotion?: string | null
       duration?: number
+      imageUrl?: string | null
+      imageSource?: string | null
     }>,
   ) {
     return prisma.$transaction(async (tx) => {
@@ -127,6 +129,8 @@ export class ProjectRepository {
             ...(scene.description !== undefined ? { description: scene.description } : {}),
             ...(scene.visualPrompt !== undefined ? { visualPrompt: scene.visualPrompt } : {}),
             ...(scene.voiceText !== undefined ? { voiceText: scene.voiceText } : {}),
+            ...(scene.imageUrl !== undefined ? { imageUrl: scene.imageUrl || null } : {}),
+            ...(scene.imageSource !== undefined ? { imageSource: scene.imageSource } : {}),
             ...(scene.voiceId !== undefined ? { voiceId: scene.voiceId } : {}),
             ...(scene.voiceEmotion !== undefined ? { voiceEmotion: scene.voiceEmotion } : {}),
             ...(scene.duration !== undefined ? { duration: scene.duration } : {}),

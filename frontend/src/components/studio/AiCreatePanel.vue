@@ -126,20 +126,17 @@ const aiCapabilities = ['文案', '分镜', '配音', '素材', '字幕', 'BGM']
         <button
           v-for="(scene, idx) in scenes"
           :key="scene.id"
-          class="w-full text-left p-3 rounded-xl border text-xs transition-all space-y-1.5"
-          :class="
-            scene.id === selectedSceneId
-              ? 'btn-nav--active border border-border'
-              : 'bg-card/40 border border-border hover:border-accent-blue/40'
-          "
+          type="button"
+          class="ui-card space-y-1.5"
+          :class="scene.id === selectedSceneId ? 'ui-card--active' : ''"
           @click="emit('selectScene', scene.id)"
         >
-          <div class="flex items-center justify-between text-[11px]">
-            <span class="font-mono font-bold text-accent-blue">SCENE #{{ idx + 1 }}</span>
-            <span class="text-muted font-mono">{{ scene.duration }}s</span>
+          <div class="ui-card__row">
+            <span class="ui-card__label">SCENE #{{ idx + 1 }}</span>
+            <span class="ui-card__meta">{{ scene.duration }}s</span>
           </div>
-          <div class="font-semibold text-white truncate">{{ scene.title }}</div>
-          <p class="text-[11px] text-muted line-clamp-2 leading-relaxed m-0">{{ scene.description }}</p>
+          <div class="ui-card__title truncate">{{ scene.title }}</div>
+          <p class="ui-card__desc line-clamp-2">{{ scene.description }}</p>
         </button>
       </div>
     </div>

@@ -43,6 +43,7 @@ const {
   handleGenerate,
   handleAiOptimize,
   handleRedub,
+  handleRegenerateImage,
   handleAddScene,
   handleDeleteScene,
   goToProduction,
@@ -62,9 +63,9 @@ function showComingSoon(feature: string) {
 
     <div
       v-if="generationNotice"
-      class="mx-4 mb-2 px-3 py-2 btn-soft !h-auto !rounded-xl text-accent-blue text-xs font-mono flex items-center gap-2 shrink-0 pointer-events-none"
+      class="mx-4 mb-2 ui-notice shrink-0 pointer-events-none"
     >
-      <span class="inline-block w-3 h-3 border-2 border-accent-blue border-t-transparent rounded-full animate-spin" />
+      <span class="ui-notice__spinner" />
       <span>{{ generationNotice }}</span>
       <span v-if="isDemoProject" class="ml-auto text-warning">DEMO</span>
     </div>
@@ -125,7 +126,7 @@ function showComingSoon(feature: string) {
             :project-topic="aiPromptTopic"
             @update="selectedScene && updateScene(selectedScene.id, $event)"
             @delete="selectedScene && handleDeleteScene(selectedScene.id)"
-            @replace-asset="showAssetPicker = true"
+            @replace-asset="selectedScene && handleRegenerateImage(selectedScene.id)"
             @save-draft="router.push({ name: 'dashboard' })"
             @start-render="goToProduction"
           />
@@ -158,7 +159,7 @@ function showComingSoon(feature: string) {
             v-for="ast in DEMO_ASSETS.filter((a) => a.url)"
             :key="ast.id"
             class="bg-card border border-border rounded-xl overflow-hidden hover:border-accent-blue/50 group text-left"
-            @click="selectedScene && updateScene(selectedScene.id, { imageUrl: ast.url }); showAssetPicker = false"
+            @click="selectedScene && updateScene(selectedScene.id, { imageUrl: ast.url, imageSource: 'manual' }); showAssetPicker = false"
           >
             <img :src="ast.url" alt="" class="w-full h-24 object-cover group-hover:scale-105 transition-transform" />
             <div class="p-2 text-[11px] text-white truncate font-medium">{{ ast.title }}</div>

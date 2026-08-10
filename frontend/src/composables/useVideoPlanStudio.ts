@@ -1,9 +1,9 @@
 import { computed, onActivated, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMessage } from 'naive-ui'
-import { resolveVoiceSettings } from '@xueai/shared'
+import { resolveVoiceSettings, isStockImageUrl } from '@xueai/shared'
 import { generateScript, optimizeScript } from '@/api/script'
-import { startProduction, regenerateVoice } from '@/api/production'
+import { startProduction, regenerateVoice, generateSceneImages } from '@/api/production'
 import { updateScene as patchScene } from '@/api/scene'
 import { DEMO_ASSETS } from '@/data/mockData'
 import type { DemoScene } from '@/data/mockData'
@@ -75,6 +75,7 @@ export function useVideoPlanStudio() {
   const isGenerating = ref(false)
   const isOptimizing = ref(false)
   const isRedubbing = ref(false)
+  const isGeneratingImages = ref(false)
   const generationNotice = ref<string | null>(null)
   const showAssetPicker = ref(false)
   const scriptSource = ref<'llm' | 'preset' | null>(null)
@@ -146,6 +147,21 @@ export function useVideoPlanStudio() {
         studioStore.aspectRatio = detail.ratio
         if (detail.scenes[0]) selectedSceneId.value = detail.scenes[0].id
         activeStep.value = detail.scenes.length ? 'storyboard' : 'inspire'
+        if (detail.scenes.some(sceneNeedsMatchedImage)) {
+          isGeneratingImages.value = true
+          generationNotice.value = '正在为分镜生成与口播匹配的画面...'
+          void generateSceneImages(projectId.value)
+            .then((updated) => {
+              projectStore.currentProject = updated
+            })
+            .catch(() => {
+              message.warning('部分画面生成失败，可点击「AI 重新生成画面」重试')
+            })
+            .finally(() => {
+              isGeneratingImages.value = false
+            })
+          startImagePolling()
+        }
       }
     } catch (err) {
       loadError.value = err instanceof Error ? err.message : '加载项目失败'
@@ -184,7 +200,42 @@ export function useVideoPlanStudio() {
 
   onUnmounted(() => {
     if (timer) window.clearInterval(timer)
+    if (imagePollTimer) window.clearInterval(imagePollTimer)
   })
+
+  let imagePollTimer: number | undefined
+
+  function sceneNeedsMatchedImage(scene: Scene) {
+    if (!scene.imageUrl) return true
+    if (scene.imageSource === 'manual') return false
+    return isStockImageUrl(scene.imageUrl) || scene.imageUrl.endsWith('.svg')
+  }
+
+  function startImagePolling() {
+    if (imagePollTimer) window.clearInterval(imagePollTimer)
+    let attempts = 0
+    imagePollTimer = window.setInterval(async () => {
+      attempts += 1
+      try {
+        await projectStore.loadProject(projectId.value)
+      } catch {
+        /* ignore transient poll errors */
+      }
+      const scenes = projectStore.currentProject?.scenes ?? []
+      const pending = scenes.some(sceneNeedsMatchedImage)
+      if (!pending || attempts >= 40) {
+        if (imagePollTimer) window.clearInterval(imagePollTimer)
+        imagePollTimer = undefined
+        isGeneratingImages.value = false
+        if (!pending && scenes.length > 0) {
+          generationNotice.value = '口播与画面已自动匹配'
+          window.setTimeout(() => {
+            generationNotice.value = null
+          }, 3000)
+        }
+      }
+    }, 3000)
+  }
 
   watch(
     project,
@@ -231,7 +282,10 @@ export function useVideoPlanStudio() {
     }
   }
 
-  function updateScene(sceneId: string, patch: Partial<DemoScene>) {
+  function updateScene(
+    sceneId: string,
+    patch: Partial<DemoScene> & { imageSource?: 'ai' | 'manual' },
+  ) {
     applyLocalScenePatch(sceneId, patch)
     if (isDemoProject.value) return
 
@@ -242,6 +296,7 @@ export function useVideoPlanStudio() {
       ...(patch.voice !== undefined ? { voiceText: patch.voice } : {}),
       ...(patch.duration !== undefined ? { duration: patch.duration } : {}),
       ...(patch.imageUrl !== undefined ? { imageUrl: patch.imageUrl } : {}),
+      ...(patch.imageSource !== undefined ? { imageSource: patch.imageSource } : {}),
       ...(patch.voiceId !== undefined ? { voiceId: patch.voiceId } : {}),
       ...(patch.voiceEmotion !== undefined ? { voiceEmotion: patch.voiceEmotion } : {}),
     }
@@ -294,9 +349,11 @@ export function useVideoPlanStudio() {
       activeStep.value = 'storyboard'
       if (result.project.scenes[0]) selectedSceneId.value = result.project.scenes[0].id
       const sourceLabel = result.source === 'llm' ? 'DeepSeek AI' : '智能预设'
-      generationNotice.value = `已完成 ${result.project.scenes.length} 镜头（${sourceLabel}）`
+      generationNotice.value = `已完成 ${result.project.scenes.length} 镜头（${sourceLabel}），正在生成匹配画面...`
       if (result.notice) message.warning(result.notice)
       else message.success('AI 故事板生成成功')
+      isGeneratingImages.value = true
+      startImagePolling()
       void workspaceStore.loadSummary()
     } catch (err) {
       message.error(err instanceof Error ? err.message : '生成失败')
@@ -353,6 +410,8 @@ export function useVideoPlanStudio() {
       generationNotice.value = result.summary ?? `已优化 ${result.optimizedCount} 个分镜（${sourceLabel}）`
       if (result.notice) message.warning(result.notice)
       else message.success(result.summary ?? 'AI 优化完成')
+      isGeneratingImages.value = true
+      startImagePolling()
       void workspaceStore.loadSummary()
     } catch (err) {
       message.error(err instanceof Error ? err.message : 'AI 优化失败')
@@ -436,6 +495,38 @@ export function useVideoPlanStudio() {
     }
   }
 
+  async function handleRegenerateImage(sceneId?: string) {
+    const targetId = sceneId ?? selectedSceneId.value
+    if (!targetId) {
+      message.warning('请先选择分镜')
+      return
+    }
+
+    if (isDemoProject.value) {
+      message.info('演示模式暂不支持生成画面')
+      return
+    }
+
+    if (isGeneratingImages.value) return
+
+    isGeneratingImages.value = true
+    generationNotice.value = '正在根据口播与画面描述生成匹配镜头...'
+    try {
+      const updated = await generateSceneImages(projectId.value, targetId)
+      projectStore.currentProject = updated
+      message.success('画面已更新')
+      generationNotice.value = '当前分镜画面已与文案匹配'
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : '画面生成失败')
+      generationNotice.value = null
+    } finally {
+      isGeneratingImages.value = false
+      window.setTimeout(() => {
+        generationNotice.value = null
+      }, 3000)
+    }
+  }
+
   async function goToProduction() {
     if (isDemoProject.value) {
       await router.push({ name: 'production', params: { id: projectId.value } })
@@ -469,6 +560,7 @@ export function useVideoPlanStudio() {
     isGenerating,
     isOptimizing,
     isRedubbing,
+    isGeneratingImages,
     generationNotice,
     showAssetPicker,
     scriptSource,
@@ -482,6 +574,7 @@ export function useVideoPlanStudio() {
     handleGenerate,
     handleAiOptimize,
     handleRedub,
+    handleRegenerateImage,
     handleAddScene,
     handleDeleteScene,
     goToProduction,

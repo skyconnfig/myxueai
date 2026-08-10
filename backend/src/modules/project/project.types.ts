@@ -31,6 +31,7 @@ export const updateSceneSchema = z.object({
   voiceEmotion: z.string().optional(),
   duration: z.number().int().min(1).max(120).optional(),
   imageUrl: z.string().url().optional().or(z.literal('')),
+  imageSource: z.enum(['ai', 'manual']).optional(),
 })
 
 export const videoPlanSceneSchema = z.object({

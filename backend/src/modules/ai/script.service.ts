@@ -6,16 +6,18 @@ import { taskRepository } from '../task/task.repository.js'
 import type { GenerateScriptInput, OptimizeScriptInput, VideoPlan } from '../project/project.types.js'
 import { videoPlanSchema } from '../project/project.types.js'
 import { openAICompatibleProvider } from './providers/openai-compatible.provider.js'
+import { assetService } from '../asset/asset.service.js'
 import { creditsService } from '../workspace/credits.service.js'
 import { config } from '../../config/index.js'
+import { logger } from '../../utils/logger.js'
 
-const DEFAULT_IMAGES = [
-  'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80',
-  'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=800&q=80',
-  'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=800&q=80',
-  'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80',
-  'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80',
-]
+function scheduleSceneImageGeneration(projectId: string, sceneId?: string) {
+  void assetService
+    .generateImagesForProject(projectId, undefined, sceneId ? { sceneId, force: true } : undefined)
+    .catch((error) => {
+      logger(`Background image generation failed for ${projectId}: ${error instanceof Error ? error.message : error}`)
+    })
+}
 
 function generatePresetVideoPlan(topic: string, style?: string, duration = 60): VideoPlan {
   const cleanTopic = topic.trim() || 'AI时代普通人的生产力革命'
@@ -159,13 +161,13 @@ export class ScriptService {
 
     await projectRepository.replaceScenes(
       project.id,
-      plan.scenes.map((scene, idx) => ({
+      plan.scenes.map((scene) => ({
         title: scene.title,
         description: scene.description,
         visualPrompt: scene.visual,
         voiceText: scene.voice,
         duration: scene.duration,
-        imageUrl: DEFAULT_IMAGES[idx % DEFAULT_IMAGES.length],
+        imageUrl: null,
       })),
     )
 
@@ -192,6 +194,7 @@ export class ScriptService {
     })
 
     const updated = await projectService.getProject(project.id)
+    scheduleSceneImageGeneration(project.id)
     return { project: updated, source, notice, plan }
   }
 
@@ -266,6 +269,7 @@ export class ScriptService {
       const optimized = optimizedScenes[idx]
       if (!optimized) return null
       if (focusScene && scene.id !== focusScene.id) return null
+      const visualChanged = optimized.visual !== (scene.visualPrompt ?? scene.description)
       return {
         id: scene.id,
         title: optimized.title ?? scene.title,
@@ -273,6 +277,7 @@ export class ScriptService {
         visualPrompt: optimized.visual,
         voiceText: optimized.voice,
         duration: optimized.duration,
+        ...(visualChanged ? { imageUrl: null as null, imageSource: null as null } : {}),
       }
     }).filter(Boolean) as Array<{
       id: string
@@ -281,6 +286,8 @@ export class ScriptService {
       visualPrompt: string
       voiceText: string
       duration: number
+      imageUrl?: null
+      imageSource?: null
     }>
 
     await projectRepository.updateScenesInPlace(project.id, sceneUpdates)
@@ -300,6 +307,12 @@ export class ScriptService {
     )
 
     const updated = await projectService.getProject(project.id)
+    if (sceneUpdates.some((item) => item.imageUrl === null)) {
+      scheduleSceneImageGeneration(
+        project.id,
+        focusScene?.id,
+      )
+    }
     return {
       project: updated,
       source,

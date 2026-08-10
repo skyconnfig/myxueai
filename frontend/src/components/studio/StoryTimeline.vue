@@ -34,19 +34,16 @@ const waveformHeights = [40, 70, 30, 90, 60, 100, 40, 80, 50, 90, 30, 70, 100, 6
       <button
         v-for="(scene, idx) in scenes"
         :key="scene.id"
-        class="min-w-[140px] max-w-[180px] flex-shrink-0 text-left p-3 rounded-xl border transition-all flex flex-col"
-        :class="
-          scene.id === selectedSceneId
-            ? 'btn-nav--active border border-border'
-            : 'bg-card border border-border hover:border-accent-blue/40'
-        "
+        type="button"
+        class="ui-card min-w-[140px] max-w-[180px] flex-shrink-0 flex flex-col !cursor-pointer"
+        :class="scene.id === selectedSceneId ? 'ui-card--active' : ''"
         @click="emit('selectScene', scene.id)"
       >
-        <div class="text-[10px] font-mono text-accent-blue font-bold mb-1">
+        <div class="ui-card__label mb-1">
           {{ String(idx + 1).padStart(2, '0') }} · {{ scene.duration }}s
         </div>
-        <div class="text-xs font-semibold text-white truncate mb-1">{{ scene.title }}</div>
-        <div class="text-[10px] text-muted line-clamp-2 leading-relaxed flex-1">{{ scene.voice }}</div>
+        <div class="ui-card__title truncate mb-1">{{ scene.title }}</div>
+        <div class="ui-card__desc line-clamp-2 flex-1">{{ scene.voice }}</div>
         <div class="mt-2 h-0.5 rounded-full bg-border overflow-hidden">
           <div class="h-full bg-accent-blue/60" :style="{ width: `${Math.min(scene.duration * 8, 100)}%` }" />
         </div>

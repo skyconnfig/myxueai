@@ -18,6 +18,7 @@ export class SceneRepository {
         ...(data.voiceEmotion !== undefined ? { voiceEmotion: data.voiceEmotion } : {}),
         ...(data.duration !== undefined ? { duration: data.duration } : {}),
         ...(data.imageUrl !== undefined ? { imageUrl: data.imageUrl || null } : {}),
+        ...(data.imageSource !== undefined ? { imageSource: data.imageSource } : {}),
       },
     })
   }

@@ -86,11 +86,11 @@ function onProjectCreated(id: string) {
 
     <div
       v-if="renderNotice"
-      class="fixed bottom-6 right-6 z-50 px-4 py-3 bg-[#151922] border border-[#2563EB] text-white rounded-xl shadow-2xl flex items-center gap-3 text-xs font-mono"
+      class="fixed bottom-6 right-6 z-50 ui-notice shadow-2xl"
     >
       <span
-        class="inline-block w-4 h-4 border-2 border-[#2563EB] border-t-transparent rounded-full"
-        :class="rendering ? 'animate-spin' : ''"
+        class="ui-notice__spinner"
+        :class="rendering ? '' : '!border-t-accent-blue !animate-none'"
       />
       <span>{{ renderNotice }}</span>
     </div>

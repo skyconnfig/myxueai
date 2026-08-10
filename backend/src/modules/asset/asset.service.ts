@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import type { AssetDto } from '@xueai/shared'
-import { resolveVoiceSettings } from '@xueai/shared'
+import { buildSceneImagePrompt, resolveVoiceSettings, shouldRegenerateSceneImage } from '@xueai/shared'
 import { AppError } from '../../middleware/error-handler.js'
 import { storagePaths } from '../../config/storage.js'
 import { openAiImageProvider } from '../ai/providers/openai-image.provider.js'
@@ -40,7 +40,9 @@ function publicUrl(relativePath: string) {
   return `/storage/${relativePath.replace(/\\/g, '/')}`
 }
 
-function writePlaceholderSvg(filePath: string, title: string, index: number) {
+function writePlaceholderSvg(filePath: string, title: string, subtitle: string, index: number) {
+  const safeTitle = title.slice(0, 40).replace(/[<>&]/g, '')
+  const safeSubtitle = subtitle.slice(0, 56).replace(/[<>&]/g, '')
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">
   <defs>
@@ -50,8 +52,9 @@ function writePlaceholderSvg(filePath: string, title: string, index: number) {
     </linearGradient>
   </defs>
   <rect width="1080" height="1920" fill="url(#g)"/>
-  <text x="540" y="900" fill="#ffffff" font-size="48" font-family="Arial,sans-serif" text-anchor="middle">Scene ${index}</text>
-  <text x="540" y="980" fill="#94A3B8" font-size="28" font-family="Arial,sans-serif" text-anchor="middle">${title.slice(0, 40).replace(/[<>&]/g, '')}</text>
+  <text x="540" y="860" fill="#94A3B8" font-size="32" font-family="Arial,sans-serif" text-anchor="middle">Scene ${index}</text>
+  <text x="540" y="930" fill="#ffffff" font-size="44" font-family="Arial,sans-serif" text-anchor="middle">${safeTitle}</text>
+  <text x="540" y="1020" fill="#CBD5E1" font-size="26" font-family="Arial,sans-serif" text-anchor="middle">${safeSubtitle}</text>
 </svg>`
   fs.mkdirSync(path.dirname(filePath), { recursive: true })
   fs.writeFileSync(filePath, svg, 'utf8')
@@ -148,28 +151,58 @@ export class AssetService {
   async generateImagesForProject(
     projectId: string,
     onProgress?: (progress: number) => void,
+    options?: { force?: boolean; sceneId?: string },
   ) {
     const project = await projectRepository.findById(projectId)
     if (!project) throw new AppError(404, 'PROJECT_NOT_FOUND', '项目不存在')
 
-    const scenes = project.scenes
+    const imageAssets = await assetRepository.findMany({ projectId, type: AssetType.IMAGE })
+    let scenes = project.scenes
+    if (options?.sceneId) {
+      scenes = scenes.filter((scene) => scene.id === options.sceneId)
+      if (scenes.length === 0) throw new AppError(404, 'SCENE_NOT_FOUND', '分镜不存在')
+    }
+
     const useOpenAi = openAiImageProvider.isConfigured()
 
     for (let i = 0; i < scenes.length; i++) {
       const scene = scenes[i]
-      if (scene.imageUrl) {
+      const existingImage = imageAssets.find((asset) => asset.sceneId === scene.id)
+
+      if (
+        !shouldRegenerateSceneImage({
+          imageUrl: scene.imageUrl,
+          imageSource: (scene.imageSource as 'ai' | 'manual' | null) ?? null,
+          provider: existingImage?.provider,
+          force: options?.force,
+        })
+      ) {
         onProgress?.(Math.round(((i + 1) / scenes.length) * 100))
         continue
       }
 
-      const prompt =
-        scene.visualPrompt?.trim() ||
-        `${scene.description}. Cinematic, professional, vertical video frame, no text, no watermark.`
+      if (existingImage) {
+        await assetRepository.delete(existingImage.id)
+      }
+
+      const prompt = buildSceneImagePrompt({
+        title: scene.title,
+        description: scene.description,
+        visualPrompt: scene.visualPrompt,
+        voiceText: scene.voiceText,
+        projectPrompt: project.prompt,
+        style: project.style,
+        ratio: project.ratio,
+      })
 
       let dest: string
       let url: string
       let provider: string
-      let metadata: Record<string, unknown> = { visualPrompt: scene.visualPrompt }
+      let metadata: Record<string, unknown> = {
+        visualPrompt: scene.visualPrompt,
+        voiceText: scene.voiceText,
+        description: scene.description,
+      }
 
       if (useOpenAi) {
         try {
@@ -185,14 +218,24 @@ export class AssetService {
           logger(`OpenAI image fallback for scene ${scene.order}: ${error instanceof Error ? error.message : error}`)
           const filename = `scene-${projectId}-${scene.order}.svg`
           dest = path.join(storagePaths.images, filename)
-          writePlaceholderSvg(dest, scene.title ?? scene.description, scene.order)
+          writePlaceholderSvg(
+            dest,
+            scene.title ?? `分镜 ${scene.order}`,
+            scene.visualPrompt ?? scene.description,
+            scene.order,
+          )
           url = publicUrl(path.relative(storagePaths.root, dest))
           provider = 'placeholder'
         }
       } else {
         const filename = `scene-${projectId}-${scene.order}.svg`
         dest = path.join(storagePaths.images, filename)
-        writePlaceholderSvg(dest, scene.title ?? scene.description, scene.order)
+        writePlaceholderSvg(
+          dest,
+          scene.title ?? `分镜 ${scene.order}`,
+          scene.visualPrompt ?? scene.description,
+          scene.order,
+        )
         url = publicUrl(path.relative(storagePaths.root, dest))
         provider = 'placeholder'
       }
@@ -205,7 +248,10 @@ export class AssetService {
         provider,
         metadata,
       })
-      await sceneRepository.update(scene.id, { imageUrl: url })
+      await sceneRepository.update(scene.id, {
+        imageUrl: url,
+        ...(provider === 'openai' ? { imageSource: 'ai' as const } : {}),
+      })
       onProgress?.(Math.round(((i + 1) / scenes.length) * 100))
     }
   }
