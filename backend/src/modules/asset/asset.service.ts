@@ -271,11 +271,18 @@ export class AssetService {
 
     for (let i = 0; i < scenes.length; i++) {
       const scene = scenes[i]
-      const existingAudio = (await assetRepository.findMany({ projectId, type: AssetType.AUDIO })).find(
-        (asset) => asset.sceneId === scene.id,
+      const audioAssets = await assetRepository.findMany({ projectId, type: AssetType.AUDIO })
+      const voiceSuffix = `voice-${projectId}-${scene.order}.`
+      const existingAudio = audioAssets.find(
+        (asset) =>
+          asset.sceneId === scene.id ||
+          (asset.type === AssetType.AUDIO && asset.url.includes(voiceSuffix)),
       )
 
       if (existingAudio && existingAudio.provider !== 'placeholder' && !force) {
+        if (!existingAudio.sceneId) {
+          await assetRepository.update(existingAudio.id, { sceneId: scene.id })
+        }
         onProgress?.(Math.round(((i + 1) / scenes.length) * 100))
         continue
       }

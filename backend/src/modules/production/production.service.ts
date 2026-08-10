@@ -1,6 +1,7 @@
 import { AppError } from '../../middleware/error-handler.js'
 import { config } from '../../config/index.js'
 import { ProjectStatus, TaskStatus, TaskType } from '../../constants/status.js'
+import { loggerError } from '../../utils/logger.js'
 import { wsHub } from '../../ws/ws.server.js'
 import { assetService } from '../asset/asset.service.js'
 import { composeService } from '../compose/compose.service.js'
@@ -46,10 +47,56 @@ function formatTime(date: Date) {
   return date.toTimeString().slice(0, 8)
 }
 
+type ProjectTask = Awaited<ReturnType<typeof taskRepository.findByProjectId>>[number]
+
+const TASK_STATUS_RANK: Record<string, number> = {
+  [TaskStatus.SUCCESS]: 4,
+  [TaskStatus.RUNNING]: 3,
+  [TaskStatus.FAILED]: 2,
+  [TaskStatus.WAITING]: 1,
+}
+
+function pickPreferredTask(current: ProjectTask, candidate: ProjectTask) {
+  const currentRank = TASK_STATUS_RANK[current.status] ?? 0
+  const candidateRank = TASK_STATUS_RANK[candidate.status] ?? 0
+  if (candidateRank !== currentRank) {
+    return candidateRank > currentRank ? candidate : current
+  }
+  return candidate.updatedAt >= current.updatedAt ? candidate : current
+}
+
 export class ProductionService {
+  private normalizePipelineTasks(tasks: ProjectTask[]) {
+    const byType = new Map<string, ProjectTask>()
+    const duplicates: ProjectTask[] = []
+
+    for (const task of tasks) {
+      const existing = byType.get(task.type)
+      if (!existing) {
+        byType.set(task.type, task)
+        continue
+      }
+      const preferred = pickPreferredTask(existing, task)
+      const duplicate = preferred.id === existing.id ? task : existing
+      byType.set(task.type, preferred)
+      duplicates.push(duplicate)
+    }
+
+    return {
+      tasks: PIPELINE.map((step) => byType.get(step.type)).filter(Boolean) as ProjectTask[],
+      duplicates,
+    }
+  }
+
   private async ensurePipelineTasks(projectId: string, hasScenes: boolean) {
     const existing = await taskRepository.findByProjectId(projectId)
-    const byType = new Map(existing.map((t) => [t.type, t]))
+    const { tasks, duplicates } = this.normalizePipelineTasks(existing)
+
+    for (const duplicate of duplicates) {
+      await taskRepository.delete(duplicate.id)
+    }
+
+    const byType = new Map(tasks.map((task) => [task.type, task]))
 
     for (const step of PIPELINE) {
       if (!byType.has(step.type)) {
@@ -63,10 +110,11 @@ export class ProductionService {
       }
     }
 
-    return taskRepository.findByProjectId(projectId)
+    const latest = await taskRepository.findByProjectId(projectId)
+    return this.normalizePipelineTasks(latest).tasks
   }
 
-  private buildSteps(tasks: Awaited<ReturnType<typeof taskRepository.findByProjectId>>) {
+  private buildSteps(tasks: ProjectTask[]) {
     return PIPELINE.map((step) => {
       const task = tasks.find((t) => t.type === step.type)
       if (!task) {
@@ -86,7 +134,7 @@ export class ProductionService {
     })
   }
 
-  private buildLogs(tasks: Awaited<ReturnType<typeof taskRepository.findByProjectId>>) {
+  private buildLogs(tasks: ProjectTask[]) {
     const logs: Array<{ time: string; message: string }> = []
     for (const task of [...tasks].reverse()) {
       const label = TASK_LABELS[task.type] ?? task.type
@@ -121,7 +169,7 @@ export class ProductionService {
     runner: (onProgress: (p: number) => Promise<void>) => Promise<void>,
   ) {
     const tasks = await taskRepository.findByProjectId(projectId)
-    const task = tasks.find((t) => t.type === type)
+    const task = this.normalizePipelineTasks(tasks).tasks.find((t) => t.type === type)
     if (!task) return
 
     await taskRepository.update(task.id, { status: TaskStatus.RUNNING, progress: 5, error: null })
@@ -286,7 +334,9 @@ export class ProductionService {
       await taskRepository.update(scriptTask.id, { status: TaskStatus.SUCCESS, progress: 100 })
     }
 
-    void this.runPipeline(projectId)
+    void this.runPipeline(projectId).catch((error) => {
+      loggerError(`Production pipeline failed for ${projectId}`, error)
+    })
 
     const status = await this.getStatus(projectId, false)
     return { ...status, creditsDeducted: deduction.deducted, creditsBalance: deduction.balance }

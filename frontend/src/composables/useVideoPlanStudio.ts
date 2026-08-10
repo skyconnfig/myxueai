@@ -14,6 +14,23 @@ import type { ProjectDetail, Scene } from '@/types'
 
 export type StudioStep = 'inspire' | 'script' | 'storyboard' | 'material' | 'edit' | 'publish'
 
+const PREVIEW_VOLUME_KEY = 'xueai:preview-volume'
+const DEFAULT_PREVIEW_VOLUME = 0.85
+
+function loadStoredVolume() {
+  if (typeof window === 'undefined') return DEFAULT_PREVIEW_VOLUME
+  const raw = window.localStorage.getItem(PREVIEW_VOLUME_KEY)
+  if (raw == null) return DEFAULT_PREVIEW_VOLUME
+  const parsed = Number(raw)
+  if (!Number.isFinite(parsed)) return DEFAULT_PREVIEW_VOLUME
+  return Math.min(1, Math.max(0, parsed))
+}
+
+function persistVolume(value: number) {
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(PREVIEW_VOLUME_KEY, String(value))
+}
+
 const DEFAULT_IMAGE = DEMO_ASSETS[0]?.url ?? ''
 
 function mapScene(scene: Scene): DemoScene {
@@ -70,6 +87,7 @@ export function useVideoPlanStudio() {
   const currentTime = ref(0)
   const showSubtitles = ref(true)
   const isMuted = ref(false)
+  const volume = ref(loadStoredVolume())
   const aiPromptTopic = ref('')
   const aiStyle = ref('专业干货 / 深度解析')
   const isGenerating = ref(false)
@@ -126,6 +144,25 @@ export function useVideoPlanStudio() {
     return 0
   })
 
+  function sceneStartTimeFor(sceneId: string) {
+    let accumulated = 0
+    for (const scene of project.value.scenes) {
+      if (scene.id === sceneId) return accumulated
+      accumulated += scene.duration
+    }
+    return 0
+  }
+
+  const previewScene = computed(() =>
+    isPlaying.value ? activePlayingScene.value : selectedScene.value,
+  )
+
+  const previewSceneStartTime = computed(() => {
+    const scene = previewScene.value
+    if (!scene) return 0
+    return sceneStartTimeFor(scene.id)
+  })
+
   const generateProgress = computed(() => {
     if (project.value.scenes.length === 0) return 15
     if (activeStep.value === 'material') return 55
@@ -179,7 +216,10 @@ export function useVideoPlanStudio() {
   )
 
   let timer: number | undefined
-  watch(isPlaying, (playing) => {
+  watch(isPlaying, (playing, wasPlaying) => {
+    if (playing && !wasPlaying && selectedSceneId.value) {
+      currentTime.value = sceneStartTimeFor(selectedSceneId.value)
+    }
     if (playing) {
       timer = window.setInterval(() => {
         currentTime.value = currentTime.value >= totalDuration.value ? 0 : currentTime.value + 0.2
@@ -188,7 +228,7 @@ export function useVideoPlanStudio() {
     } else if (timer) {
       window.clearInterval(timer)
     }
-  })
+  }, { flush: 'sync' })
 
   onMounted(() => {
     void loadProjectData()
@@ -252,6 +292,10 @@ export function useVideoPlanStudio() {
     selectedSceneId.value = ''
     scriptSource.value = null
     void loadProjectData()
+  })
+
+  watch(volume, (value) => {
+    persistVolume(value)
   })
 
   const scenePatchTimers = new Map<string, number>()
@@ -555,6 +599,7 @@ export function useVideoPlanStudio() {
     currentTime,
     showSubtitles,
     isMuted,
+    volume,
     aiPromptTopic,
     aiStyle,
     isGenerating,
@@ -569,6 +614,8 @@ export function useVideoPlanStudio() {
     totalDuration,
     activePlayingScene,
     activeSceneStartTime,
+    previewScene,
+    previewSceneStartTime,
     generateProgress,
     updateScene,
     handleGenerate,

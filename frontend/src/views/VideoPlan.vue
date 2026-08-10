@@ -25,6 +25,7 @@ const {
   currentTime,
   showSubtitles,
   isMuted,
+  volume,
   aiPromptTopic,
   aiStyle,
   isGenerating,
@@ -38,6 +39,8 @@ const {
   totalDuration,
   activePlayingScene,
   activeSceneStartTime,
+  previewScene,
+  previewSceneStartTime,
   generateProgress,
   updateScene,
   handleGenerate,
@@ -95,23 +98,25 @@ function showComingSoon(feature: string) {
 
         <div class="col-span-6 bg-dark flex flex-col min-h-0 border-r border-border">
           <VideoPreviewStudio
-            :scene="activePlayingScene"
+            :scene="previewScene"
             :ratio="studioStore.aspectRatio"
             :current-time="currentTime"
             :total-duration="totalDuration"
             :is-playing="isPlaying"
             :show-subtitles="showSubtitles"
             :is-muted="isMuted"
+            :volume="volume"
             :project-name="project.name"
             :style="project.category"
             :progress="generateProgress"
             :has-scenes="project.scenes.length > 0"
             :is-optimizing="isOptimizing || isRedubbing"
-            :scene-start-time="activeSceneStartTime"
+            :scene-start-time="previewSceneStartTime"
             @update:current-time="currentTime = $event"
             @update:is-playing="isPlaying = $event"
             @update:show-subtitles="showSubtitles = $event"
             @update:is-muted="isMuted = $event"
+            @update:volume="volume = $event"
             @ai-optimize="handleAiOptimize"
             @change-style="showComingSoon('改变风格')"
             @redub="handleRedub"

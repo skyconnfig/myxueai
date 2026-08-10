@@ -9,8 +9,25 @@ class WsHub {
   private wss: WebSocketServer | null = null
   private rooms = new Map<string, ProjectRoom>()
 
+  close() {
+    for (const room of this.rooms.values()) {
+      for (const client of room) {
+        client.close(1001, 'Server shutting down')
+      }
+    }
+    this.rooms.clear()
+    if (this.wss) {
+      this.wss.close()
+      this.wss = null
+    }
+  }
+
   attach(server: HttpServer) {
+    this.close()
     this.wss = new WebSocketServer({ server })
+    this.wss.on('error', (error) => {
+      logger(`WebSocket server error: ${error.message}`)
+    })
 
     this.wss.on('connection', (socket, req) => {
       const url = req.url ?? ''

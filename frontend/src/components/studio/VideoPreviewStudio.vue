@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 import {
   Maximize2,
   Mic,
@@ -28,6 +28,7 @@ const props = defineProps<{
   isPlaying: boolean
   showSubtitles: boolean
   isMuted: boolean
+  volume: number
   projectName: string
   style: string
   progress: number
@@ -41,6 +42,7 @@ const emit = defineEmits<{
   'update:isPlaying': [value: boolean]
   'update:showSubtitles': [value: boolean]
   'update:isMuted': [value: boolean]
+  'update:volume': [value: number]
   aiOptimize: []
   changeStyle: []
   redub: []
@@ -99,45 +101,108 @@ const aiActions = [
 const audioEl = ref<HTMLAudioElement | null>(null)
 const hasAudio = computed(() => Boolean(props.scene?.audioUrl))
 const loadedAudioUrl = ref<string | null>(null)
+const volumePercent = computed(() => Math.round(effectiveVolume() * 100))
+
+function effectiveVolume() {
+  return Number.isFinite(props.volume) ? props.volume : 0.85
+}
+
+function resolveAudioSrc(url: string) {
+  if (/^https?:\/\//i.test(url)) return url
+  return url.startsWith('/') ? url : `/${url}`
+}
+
+function applyAudioVolume() {
+  const el = audioEl.value
+  if (!el) return
+  el.volume = Math.min(1, Math.max(0, effectiveVolume()))
+  el.muted = props.isMuted
+}
+
+function toggleMute() {
+  emit('update:isMuted', !props.isMuted)
+}
+
+function onVolumeInput(event: Event) {
+  const next = Number((event.target as HTMLInputElement).value) / 100
+  emit('update:volume', Math.min(1, Math.max(0, next)))
+  if (props.isMuted && next > 0) {
+    emit('update:isMuted', false)
+  }
+}
 
 function localSceneTime() {
   return Math.max(0, props.currentTime - (props.sceneStartTime ?? 0))
 }
 
-async function ensureAudioReady() {
+function bindAudioSource(url: string) {
   const el = audioEl.value
-  const url = props.scene?.audioUrl
-  if (!el || !url) return false
+  if (!el) return false
 
-  if (loadedAudioUrl.value !== url) {
-    el.src = url
+  const src = resolveAudioSrc(url)
+  const resolved = new URL(src, window.location.origin).href
+  const current = el.currentSrc || el.src
+
+  if (loadedAudioUrl.value !== url || !current || current !== resolved) {
+    el.src = src
     loadedAudioUrl.value = url
     el.load()
-    await new Promise<void>((resolve) => {
-      if (el.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-        resolve()
-        return
-      }
-      const onReady = () => {
-        el.removeEventListener('canplay', onReady)
-        resolve()
-      }
-      el.addEventListener('canplay', onReady, { once: true })
-    })
   }
 
-  const localTime = localSceneTime()
-  if (localTime <= props.scene!.duration && Math.abs(el.currentTime - localTime) > 0.2) {
-    el.currentTime = localTime
-  }
-  return localTime <= props.scene!.duration
+  applyAudioVolume()
+  return true
 }
 
-async function playAudioFromUserGesture() {
-  if (props.isMuted || !props.scene?.audioUrl) return
-  const ok = await ensureAudioReady()
+function waitCanPlay(el: HTMLAudioElement) {
+  return new Promise<void>((resolve) => {
+    if (el.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+      resolve()
+      return
+    }
+    const done = () => {
+      el.removeEventListener('canplay', done)
+      el.removeEventListener('error', done)
+      resolve()
+    }
+    el.addEventListener('canplay', done, { once: true })
+    el.addEventListener('error', done, { once: true })
+  })
+}
+
+function syncAudioTime(force = false) {
   const el = audioEl.value
-  if (!ok || !el) return
+  if (!el || !props.scene) return
+
+  const localTime = localSceneTime()
+  if (localTime > props.scene.duration) return
+
+  if (force || Math.abs(el.currentTime - localTime) > 0.35) {
+    try {
+      el.currentTime = localTime
+    } catch {
+      /* media not ready yet */
+    }
+  }
+}
+
+async function startPlaybackFromGesture() {
+  if (props.isMuted || !props.scene?.audioUrl) return
+  const el = audioEl.value
+  if (!el || !bindAudioSource(props.scene.audioUrl)) return
+
+  syncAudioTime(true)
+
+  const playAttempt = el.play()
+  try {
+    await playAttempt
+    return
+  } catch {
+    /* media may still be loading */
+  }
+
+  await waitCanPlay(el)
+  applyAudioVolume()
+  syncAudioTime(true)
   try {
     await el.play()
   } catch {
@@ -149,12 +214,14 @@ function pauseAudio() {
   audioEl.value?.pause()
 }
 
-async function syncPlayback() {
+async function maintainPlayback() {
   const el = audioEl.value
   if (!el || !props.scene?.audioUrl || props.isMuted) {
     pauseAudio()
     return
   }
+
+  if (!bindAudioSource(props.scene.audioUrl)) return
 
   const localTime = localSceneTime()
   if (localTime > props.scene.duration) {
@@ -162,35 +229,52 @@ async function syncPlayback() {
     return
   }
 
-  await ensureAudioReady()
+  if (!props.isPlaying) {
+    pauseAudio()
+    syncAudioTime(true)
+    return
+  }
 
-  if (props.isPlaying) {
+  if (el.paused) {
+    await waitCanPlay(el)
+    syncAudioTime(true)
     try {
       await el.play()
     } catch {
-      /* autoplay policy */
+      /* needs a fresh user gesture */
     }
-  } else {
-    pauseAudio()
   }
 }
 
 function togglePlay() {
   const next = !props.isPlaying
-  emit('update:isPlaying', next)
   if (next) {
-    void playAudioFromUserGesture()
+    emit('update:isPlaying', true)
+    void nextTick(() => {
+      startPlaybackFromGesture()
+    })
   } else {
+    emit('update:isPlaying', false)
     pauseAudio()
   }
 }
 
 watch(
-  () => [props.isPlaying, props.currentTime, props.scene?.audioUrl, props.isMuted, props.sceneStartTime] as const,
+  () => [props.isPlaying, props.isMuted, props.volume, props.scene?.audioUrl, props.scene?.id, props.sceneStartTime] as const,
   () => {
-    void syncPlayback()
+    applyAudioVolume()
+    void maintainPlayback()
   },
   { flush: 'post' },
+)
+
+watch(
+  () => props.currentTime,
+  () => {
+    if (!props.isPlaying) {
+      syncAudioTime(true)
+    }
+  },
 )
 
 watch(
@@ -199,7 +283,9 @@ watch(
     if (!url) {
       loadedAudioUrl.value = null
       pauseAudio()
+      return
     }
+    bindAudioSource(url)
   },
 )
 </script>
@@ -281,7 +367,7 @@ watch(
             class="px-2 py-0.5 glass-panel text-[10px] font-mono rounded-lg"
             :class="isMuted ? 'text-muted' : 'text-success'"
           >
-            {{ isMuted ? '配音已静音' : '配音已就绪' }}
+            {{ isMuted ? '配音已静音' : `配音 ${volumePercent}%` }}
           </span>
         </div>
         <div
@@ -352,11 +438,23 @@ watch(
           type="button"
           class="btn-nav !w-auto !p-1.5"
           :class="isMuted ? 'btn-nav--active' : ''"
-          @click="emit('update:isMuted', !isMuted)"
+          :title="isMuted ? '取消静音' : '静音'"
+          @click="toggleMute"
         >
           <VolumeX v-if="isMuted" class="w-4 h-4" />
           <Volume2 v-else class="w-4 h-4" />
         </button>
+        <input
+          :value="volumePercent"
+          type="range"
+          min="0"
+          max="100"
+          step="1"
+          class="w-20 accent-accent-blue cursor-pointer"
+          :title="`音量 ${volumePercent}%`"
+          @input="onVolumeInput"
+        />
+        <span class="font-mono text-[10px] text-muted w-8 text-right">{{ volumePercent }}%</span>
         <button
           type="button"
           class="btn-nav !w-auto !p-1.5"
@@ -423,7 +521,7 @@ watch(
                 class="px-2.5 py-1 glass-panel text-xs font-mono rounded-lg"
                 :class="isMuted ? 'text-muted' : 'text-success'"
               >
-                {{ isMuted ? '配音已静音' : '配音已就绪' }}
+                {{ isMuted ? '配音已静音' : `配音 ${volumePercent}%` }}
               </span>
             </div>
             <div
@@ -472,11 +570,23 @@ watch(
               type="button"
               class="btn-nav !w-auto !p-2"
               :class="isMuted ? 'btn-nav--active' : ''"
-              @click="emit('update:isMuted', !isMuted)"
+              :title="isMuted ? '取消静音' : '静音'"
+              @click="toggleMute"
             >
               <VolumeX v-if="isMuted" class="w-5 h-5" />
               <Volume2 v-else class="w-5 h-5" />
             </button>
+            <input
+              :value="volumePercent"
+              type="range"
+              min="0"
+              max="100"
+              step="1"
+              class="w-24 accent-accent-blue cursor-pointer"
+              :title="`音量 ${volumePercent}%`"
+              @input="onVolumeInput"
+            />
+            <span class="font-mono text-xs text-muted w-9 text-right shrink-0">{{ volumePercent }}%</span>
             <button type="button" class="btn-nav !w-auto !p-2" title="退出全屏" @click="closeFullscreen">
               <X class="w-5 h-5" />
             </button>

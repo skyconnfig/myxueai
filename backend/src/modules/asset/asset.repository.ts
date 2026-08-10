@@ -43,6 +43,15 @@ export class AssetRepository {
     return prisma.asset.delete({ where: { id } })
   }
 
+  update(id: string, data: { sceneId?: string | null }) {
+    return prisma.asset.update({
+      where: { id },
+      data: {
+        ...(data.sceneId !== undefined ? { sceneId: data.sceneId } : {}),
+      },
+    })
+  }
+
   createAudioMeta(assetId: string, data: { duration?: number; voice?: string; language?: string }) {
     return prisma.audioAsset.create({
       data: { assetId, ...data },

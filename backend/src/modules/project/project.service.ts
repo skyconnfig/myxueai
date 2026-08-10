@@ -9,6 +9,25 @@ function summarizeName(prompt: string) {
   return trimmed.length > 40 ? `${trimmed.slice(0, 40)}...` : trimmed
 }
 
+type ProjectAsset = NonNullable<
+  Awaited<ReturnType<typeof projectRepository.findById>>
+>['assets'][number]
+
+function findSceneAudioAsset(
+  assets: ProjectAsset[],
+  projectId: string,
+  scene: { id: string; order: number },
+) {
+  const linked = assets.find((asset) => asset.type === 'AUDIO' && asset.sceneId === scene.id)
+  if (linked) return linked
+
+  const suffix = `voice-${projectId}-${scene.order}.`
+  const matches = assets.filter((asset) => asset.type === 'AUDIO' && asset.url.includes(suffix))
+  if (matches.length === 0) return undefined
+
+  return matches.find((asset) => !asset.sceneId) ?? matches[matches.length - 1]
+}
+
 function toProjectDto(project: NonNullable<Awaited<ReturnType<typeof projectRepository.findById>>>) {
   const assets = project.assets ?? []
   return {
@@ -24,9 +43,7 @@ function toProjectDto(project: NonNullable<Awaited<ReturnType<typeof projectRepo
     createdAt: project.createdAt.toISOString(),
     updatedAt: project.updatedAt.toISOString(),
     scenes: project.scenes.map((scene) => {
-      const audioAsset = assets.find(
-        (asset) => asset.sceneId === scene.id && asset.type === 'AUDIO',
-      )
+      const audioAsset = findSceneAudioAsset(assets, project.id, scene)
       return {
         id: scene.id,
         projectId: scene.projectId,
