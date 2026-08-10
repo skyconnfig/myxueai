@@ -4,7 +4,9 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { AppError } from '../../middleware/error-handler.js'
 import { ProjectStatus } from '../../constants/status.js'
+import { config } from '../../config/index.js'
 import { storagePaths } from '../../config/storage.js'
+import { composeService } from '../compose/compose.service.js'
 import { projectRepository } from '../project/project.repository.js'
 import { renderInputBuilder } from './render-input.builder.js'
 import { renderRepository } from './render.repository.js'
@@ -28,10 +30,23 @@ async function runRemotionRender(inputPath: string, outputPath: string): Promise
     const child = spawn(
       process.execPath,
       [scriptPath, inputPath, outputPath],
-      { cwd: remotionRoot, stdio: 'pipe', env: process.env },
+      {
+        cwd: remotionRoot,
+        stdio: 'pipe',
+        env: {
+          ...process.env,
+          REMOTION_CRF: String(config.remotion.crf),
+          REMOTION_CONCURRENCY: String(config.remotion.concurrency),
+          REMOTION_CHROMIUM_HEADLESS: config.remotion.chromiumHeadless ? 'true' : 'false',
+        },
+      },
     )
 
+    let stdout = ''
     let stderr = ''
+    child.stdout?.on('data', (chunk: Buffer) => {
+      stdout += chunk.toString()
+    })
     child.stderr?.on('data', (chunk: Buffer) => {
       stderr += chunk.toString()
     })
@@ -39,7 +54,8 @@ async function runRemotionRender(inputPath: string, outputPath: string): Promise
     child.on('close', (code) => {
       if (code === 0 && fs.existsSync(outputPath)) resolve(true)
       else {
-        console.warn('[render] Remotion render failed:', stderr.slice(-500))
+        const detail = (stderr || stdout).slice(-800)
+        console.warn('[render] Remotion render failed:', detail)
         resolve(false)
       }
     })
@@ -74,7 +90,8 @@ export class RenderService {
       throw new AppError(400, 'NO_SCENES', '没有可渲染的分镜')
     }
 
-    const renderInput = await renderInputBuilder.build(projectId)
+    const renderInput =
+      composeService.getComposedInput(projectId) ?? (await renderInputBuilder.build(projectId))
     const render = await renderRepository.create({
       projectId,
       composition: 'VideoComposition',
@@ -123,6 +140,7 @@ export class RenderService {
       renderId: render.id,
       outputUrl,
       usedRemotion: remotionOk,
+      format: remotionOk ? 'mp4' : 'preview',
     }
   }
 

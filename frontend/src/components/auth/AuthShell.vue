@@ -451,7 +451,7 @@ onMounted(() => {
   filter: drop-shadow(0 16px 32px rgba(59, 130, 246, 0.1));
 }
 
-/* Form panel */
+.auth-page__switch {
   margin: 1.5rem 0 0;
   text-align: center;
   font-size: 0.8125rem;

@@ -15,47 +15,73 @@ import {
   Wand2,
 } from 'lucide-vue-next'
 import { useProjectStore } from '@/stores/project'
-import { useStudioStore } from '@/stores/studio'
 import { useWorkspaceStore } from '@/stores/workspace'
 
 const router = useRouter()
 const projectStore = useProjectStore()
-const studioStore = useStudioStore()
 const workspaceStore = useWorkspaceStore()
 
 onMounted(async () => {
   await Promise.all([projectStore.loadProjects(), workspaceStore.loadTemplates(), workspaceStore.loadSummary()])
 })
 
-const displayProjects = computed(() => {
-  if (projectStore.projects.length) {
-    return projectStore.projects.map((p) => ({
-      id: p.id,
-      name: p.name,
-      category: p.style ?? '科技干货',
-      status: p.status,
-      ratio: p.ratio,
-      duration: p.duration,
-      updatedAt: new Date(p.updatedAt).toLocaleDateString(),
-      thumbnail: p.thumbnail ?? 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80',
-      sceneCount: p.sceneCount ?? 0,
-    }))
-  }
-  return studioStore.projects.map((p) => ({
+const displayProjects = computed(() =>
+  projectStore.projects.map((p) => ({
     id: p.id,
     name: p.name,
-    category: p.category,
+    category: p.style ?? '未分类',
     status: p.status,
     ratio: p.ratio,
     duration: p.duration,
-    updatedAt: p.updatedAt,
-    thumbnail: p.thumbnail,
-    sceneCount: p.scenes.length,
-  }))
-})
+    updatedAt: new Date(p.updatedAt).toLocaleDateString(),
+    thumbnail: p.thumbnail ?? '',
+    sceneCount: p.sceneCount ?? 0,
+  })),
+)
 
-function openStudio(id: string) {
-  studioStore.selectProject(id)
+const dashboardStats = computed(() => [
+  {
+    label: '剩余 AI 点数',
+    value: workspaceStore.credits.toLocaleString(),
+    unit: '',
+    trend: '脚本生成 ~120/次',
+    icon: Sparkles,
+    color: 'text-accent-purple',
+  },
+  {
+    label: '进行中任务',
+    value: String(workspaceStore.runningCount),
+    unit: '个',
+    trend: `队列 ${workspaceStore.queueCount} 个`,
+    icon: Rocket,
+    color: 'text-accent-blue',
+  },
+  {
+    label: '平均单条用时',
+    value: workspaceStore.avgProductionMinutes != null ? String(workspaceStore.avgProductionMinutes) : '—',
+    unit: workspaceStore.avgProductionMinutes != null ? '分钟' : '',
+    trend:
+      workspaceStore.completedProjectCount > 0
+        ? `已完成 ${workspaceStore.completedProjectCount} 个项目`
+        : '完成首个项目后显示',
+    icon: Clock,
+    color: 'text-warning',
+  },
+  {
+    label: '资产库索引',
+    value: workspaceStore.assetCount.toLocaleString(),
+    unit: '个',
+    trend: '高清素材与音频',
+    icon: Layers,
+    color: 'text-accent-purple',
+  },
+])
+
+function openStudio(id?: string) {
+  if (!id) {
+    router.push({ name: 'create-video' })
+    return
+  }
   router.push({ name: 'video-plan', params: { id } })
 }
 
@@ -90,7 +116,7 @@ function statusLabel(status: string) {
         <button
           type="button"
           class="btn-soft"
-          @click="openStudio(displayProjects[0]?.id ?? 'demo-1')"
+          @click="openStudio(displayProjects[0]?.id)"
         >
           <Video class="w-4 h-4 text-accent-blue" />
           进入 Studio
@@ -108,12 +134,7 @@ function statusLabel(status: string) {
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <div
-        v-for="(stat, i) in [
-          { label: '剩余 AI 点数', value: workspaceStore.credits.toLocaleString(), unit: '', trend: '脚本生成 ~120/次', icon: Sparkles, color: 'text-accent-purple' },
-          { label: '进行中任务', value: String(workspaceStore.runningCount), unit: '个', trend: `队列 ${workspaceStore.queueCount} 个`, icon: Rocket, color: 'text-accent-blue' },
-          { label: '平均单条用时', value: '4.2', unit: '分钟', trend: '传统人工 240 分钟', icon: Clock, color: 'text-warning' },
-          { label: '资产库索引', value: '1,420', unit: '个', trend: '高清素材与音频', icon: Layers, color: 'text-accent-purple' },
-        ]"
+        v-for="(stat, i) in dashboardStats"
         :key="i"
         class="glass-panel p-4 flex items-center justify-between"
       >
@@ -174,6 +195,12 @@ function statusLabel(status: string) {
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div
+          v-if="!displayProjects.length"
+          class="glass-panel p-8 col-span-full text-center text-muted text-sm"
+        >
+          暂无项目，点击「AI 创建视频」开始第一个项目
+        </div>
         <button
           v-for="project in displayProjects"
           :key="project.id"
@@ -182,7 +209,18 @@ function statusLabel(status: string) {
           @click="openStudio(project.id)"
         >
           <div class="relative h-44 bg-dark overflow-hidden">
-            <img :src="project.thumbnail" :alt="project.name" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-90" />
+            <img
+              v-if="project.thumbnail"
+              :src="project.thumbnail"
+              :alt="project.name"
+              class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-90"
+            />
+            <div
+              v-else
+              class="w-full h-full flex items-center justify-center bg-card text-muted text-xs font-mono"
+            >
+              暂无封面
+            </div>
             <div class="absolute inset-0 bg-gradient-to-t from-[#1B202A] via-transparent to-transparent opacity-80" />
             <div class="absolute top-3 left-3 flex items-center gap-1.5">
               <span class="px-2 py-0.5 bg-card border border-border text-[10px] font-mono text-white rounded-lg">{{ project.ratio }}</span>

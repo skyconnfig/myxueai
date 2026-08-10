@@ -4,9 +4,12 @@ import { fetchTaskSummary } from '@/api/task'
 import { fetchTemplates, fetchWorkspaceSummary, type VideoTemplate } from '@/api/workspace'
 
 export const useWorkspaceStore = defineStore('workspace', () => {
-  const credits = ref(12560)
+  const credits = ref(0)
   const runningCount = ref(0)
   const queueCount = ref(0)
+  const assetCount = ref(0)
+  const avgProductionMinutes = ref<number | null>(null)
+  const completedProjectCount = ref(0)
   const recentTasks = ref<Array<{ id: string; projectName: string; type: string; status: string; progress: number }>>([])
   const templates = ref<VideoTemplate[]>([])
   const loading = ref(false)
@@ -22,6 +25,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
         credits.value = workspace.credits
         runningCount.value = workspace.runningCount
         queueCount.value = workspace.queueCount
+        assetCount.value = workspace.assetCount
+        avgProductionMinutes.value = workspace.avgProductionMinutes
+        completedProjectCount.value = workspace.completedProjectCount
       }
       if (tasks) {
         credits.value = tasks.credits
@@ -46,6 +52,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     credits,
     runningCount,
     queueCount,
+    assetCount,
+    avgProductionMinutes,
+    completedProjectCount,
     recentTasks,
     templates,
     loading,

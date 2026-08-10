@@ -79,18 +79,17 @@ export class AuthService {
   }
 
   async getDemoUser() {
-    let user = await prisma.user.findUnique({ where: { email: config.demoUserEmail } })
-    if (!user) {
-      user = await prisma.user.create({
-        data: {
-          email: config.demoUserEmail,
-          password: await bcrypt.hash('demo123456', 10),
-          name: 'Demo User',
-          credits: config.workspace.defaultCredits,
-        },
-      })
-    }
-    return user
+    const passwordHash = await bcrypt.hash('demo123456', 10)
+    return prisma.user.upsert({
+      where: { email: config.demoUserEmail },
+      update: { password: passwordHash },
+      create: {
+        email: config.demoUserEmail,
+        password: passwordHash,
+        name: 'Demo User',
+        credits: config.workspace.defaultCredits,
+      },
+    })
   }
 
   verifyToken(token: string): string {

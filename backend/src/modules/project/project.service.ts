@@ -42,7 +42,7 @@ export class ProjectService {
     const projects = await projectRepository.findAll(userId)
     return projects
       .filter((p) => p.name !== '__asset_library__')
-    return projects.map((project) => ({
+      .map((project) => ({
       id: project.id,
       name: project.name,
       prompt: project.prompt,

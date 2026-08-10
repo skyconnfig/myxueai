@@ -3,12 +3,18 @@ import { createApp } from './app.js'
 import { config } from './config/index.js'
 import { connectDatabase, disconnectDatabase } from './config/database.js'
 import { ensureStorageDirectories } from './config/storage.js'
+import { authService } from './modules/auth/auth.service.js'
 import { logger, loggerError } from './utils/logger.js'
 import { wsHub } from './ws/ws.server.js'
 
 async function bootstrap() {
   ensureStorageDirectories()
   await connectDatabase()
+
+  if (config.isDev) {
+    await authService.getDemoUser()
+    logger('Demo user ready: demo@xueai.local / demo123456')
+  }
 
   const app = createApp()
   const server = http.createServer(app)

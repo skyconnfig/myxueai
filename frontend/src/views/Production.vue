@@ -2,8 +2,9 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMessage } from 'naive-ui'
-import { CheckCircle2, ChevronRight, Circle, Loader2, Sparkles, XCircle } from 'lucide-vue-next'
+import { CheckCircle2, ChevronRight, Circle, Download, Loader2, Sparkles, XCircle } from 'lucide-vue-next'
 import { fetchProductionStatus, startProduction, type ProductionStatus } from '@/api/production'
+import VideoOutputPlayer from '@/components/video/VideoOutputPlayer.vue'
 import { useProjectWebSocket } from '@/composables/useProjectWebSocket'
 import { useWorkspaceStore } from '@/stores/workspace'
 
@@ -24,7 +25,8 @@ const pipelineItems = [
   { id: 'storyboard', label: '② 自动分镜' },
   { id: 'image', label: '③ 素材生成' },
   { id: 'voice', label: '④ 配音合成' },
-  { id: 'render', label: '⑤ 渲染导出' },
+  { id: 'compose', label: '⑤ 视频合成' },
+  { id: 'render', label: '⑥ 渲染导出' },
 ]
 
 const stepIcon = (stepStatus: string) => {
@@ -36,9 +38,23 @@ const stepIcon = (stepStatus: string) => {
 
 const activePipelineIndex = computed(() => {
   if (!status.value) return 2
-  const map: Record<string, number> = { script: 0, image: 2, voice: 3, compose: 3, render: 4 }
+  const map: Record<string, number> = { script: 0, image: 2, voice: 3, compose: 4, render: 5 }
   return map[status.value.activeStep] ?? 2
 })
+
+const isMp4 = computed(() => status.value?.videoUrl?.toLowerCase().includes('.mp4') ?? false)
+
+function downloadOutput() {
+  if (!status.value?.videoUrl) return
+  const link = document.createElement('a')
+  link.href = status.value.videoUrl
+  link.download = `${status.value.projectName}${isMp4.value ? '.mp4' : '.html'}`
+  link.target = '_blank'
+  link.rel = 'noopener'
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+}
 
 function applyStatus(next: ProductionStatus) {
   status.value = next
@@ -199,14 +215,44 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <aside class="w-80 shrink-0 glass-panel flex flex-col overflow-hidden min-h-0">
-        <div class="px-4 py-3 border-b border-border text-[11px] font-mono font-semibold text-muted uppercase">
-          实时日志
+      <aside class="w-80 shrink-0 flex flex-col gap-4 min-h-0 overflow-hidden">
+        <div
+          v-if="status.isComplete && status.videoUrl"
+          class="glass-panel p-4 shrink-0 space-y-3"
+        >
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-mono font-semibold text-muted uppercase">成片预览</span>
+            <span
+              class="text-[10px] font-mono px-1.5 py-0.5 rounded"
+              :class="isMp4 ? 'text-success bg-success/10' : 'text-warning bg-warning/10'"
+            >
+              {{ isMp4 ? 'MP4' : 'HTML' }}
+            </span>
+          </div>
+          <VideoOutputPlayer
+            :url="status.videoUrl"
+            ratio="9:16"
+            :title="status.projectName"
+          />
+          <button
+            type="button"
+            class="btn-soft btn-soft--primary w-full !h-9 !text-xs"
+            @click="downloadOutput"
+          >
+            <Download class="w-3.5 h-3.5" />
+            {{ isMp4 ? '下载 MP4' : '下载预览' }}
+          </button>
         </div>
-        <div class="flex-1 overflow-y-auto p-4 space-y-3">
-          <div v-for="(log, i) in status.logs" :key="i" class="flex gap-3 text-xs">
-            <span class="font-mono text-muted shrink-0">{{ log.time }}</span>
-            <span class="text-muted leading-relaxed">{{ log.message }}</span>
+
+        <div class="glass-panel flex flex-col overflow-hidden flex-1 min-h-0">
+          <div class="px-4 py-3 border-b border-border text-[11px] font-mono font-semibold text-muted uppercase">
+            实时日志
+          </div>
+          <div class="flex-1 overflow-y-auto p-4 space-y-3">
+            <div v-for="(log, i) in status.logs" :key="i" class="flex gap-3 text-xs">
+              <span class="font-mono text-muted shrink-0">{{ log.time }}</span>
+              <span class="text-muted leading-relaxed">{{ log.message }}</span>
+            </div>
           </div>
         </div>
       </aside>

@@ -1,6 +1,6 @@
 import { Composition } from 'remotion'
 import type { RenderInput } from '@xueai/shared'
-import { VideoComposition } from './compositions/VideoComposition.js'
+import { VideoComposition } from './compositions/VideoComposition'
 
 const defaultProps: RenderInput = {
   duration: 10,

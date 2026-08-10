@@ -5,6 +5,9 @@ export interface WorkspaceSummary {
   creditsLabel: string
   runningCount: number
   queueCount: number
+  assetCount: number
+  avgProductionMinutes: number | null
+  completedProjectCount: number
 }
 
 export interface VideoTemplate {

@@ -25,10 +25,9 @@ async function main() {
     publicDir: path.join(remotionRoot, 'public'),
   })
 
-  const totalFrames = Math.max(
-    1,
-    Math.round((input.duration ?? 30) * (input.fps ?? 30)),
-  )
+  const totalSec =
+    input.scenes?.reduce((sum, s) => sum + (s.duration ?? 0), 0) ?? input.duration ?? 30
+  const totalFrames = Math.max(1, Math.round(totalSec * (input.fps ?? 30)))
 
   const composition = await selectComposition({
     serveUrl,

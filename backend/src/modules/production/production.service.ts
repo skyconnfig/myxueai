@@ -3,6 +3,7 @@ import { config } from '../../config/index.js'
 import { ProjectStatus, TaskStatus, TaskType } from '../../constants/status.js'
 import { wsHub } from '../../ws/ws.server.js'
 import { assetService } from '../asset/asset.service.js'
+import { composeService } from '../compose/compose.service.js'
 import { projectRepository } from '../project/project.repository.js'
 import { renderService } from '../render/render.service.js'
 import { taskRepository } from '../task/task.repository.js'
@@ -143,7 +144,7 @@ export class ProductionService {
       })
 
       await this.runTask(projectId, TaskType.VIDEO, async (onProgress) => {
-        await onProgress(100)
+        await composeService.composeForProject(projectId, (p) => void onProgress(p))
       })
 
       await this.runTask(projectId, TaskType.RENDER, async (onProgress) => {
