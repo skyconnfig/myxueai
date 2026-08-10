@@ -76,6 +76,7 @@ ${UI_STEP_SCHEMA}
 其他要求：
 - 生成 4-6 个分镜，遵循 story_arc 的 pain → solution → result → cta 顺序
 - visual 必须是**英文**商业片 Prompt，强调 cinematic commercial, real people, natural motion, documentary realism
+- visual 描述可拍摄画面，**禁止**要求画面内出现可读文字、Logo 字样、屏幕文案、字幕或标题卡（文字由后期 Remotion 叠加）
 - voice 遵循 Problem→Solution 叙事，禁止产品说明书口吻
 - 禁止：UI 卡片截图、白色矩形框、抽象「科技感」描述
 - ui_demo 类型镜头：描述 laptop screen with dashboard, hands on keyboard，禁止 isolated UI card

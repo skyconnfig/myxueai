@@ -1,4 +1,6 @@
 /** Stock URLs previously assigned by index — should be replaced with AI-matched images */
+import { SCENE_IMAGE_TEXT_FREE_RULE } from './prompt-presets.js'
+
 export const LEGACY_STOCK_IMAGE_URLS = [
   'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe',
   'https://images.unsplash.com/photo-1550745165-9bc0b252726f',
@@ -75,6 +77,7 @@ export function buildSceneImagePrompt(input: {
     input.negativePrompt?.trim(),
     input.negativeGlobal?.trim(),
     'plastic look, 3d render, cartoon, fake UI, floating card, template style, powerpoint slide, white rectangle frame, isolated UI screenshot',
+    'text overlay, readable text, typography, letters, words, captions, subtitles, watermark, signage, UI labels, screen text, logo with legible text',
   ].filter(Boolean)
 
   const sceneLine = action
@@ -82,11 +85,12 @@ export function buildSceneImagePrompt(input: {
     : environment
 
   const uiHint = input.sceneType === 'ui_demo'
-    ? 'Laptop screen showing SaaS dashboard, hands on keyboard, no isolated UI card.'
+    ? 'Over-shoulder shot of laptop with abstract blurred dashboard glow on screen, hands on keyboard, no readable UI text or labels.'
     : ''
 
   const lines = [
     'Cinematic commercial still frame.',
+    SCENE_IMAGE_TEXT_FREE_RULE,
     `Scene: ${sceneLine}.`,
     cameraParts ? `Camera: ${cameraParts}, cinematic movement feel.` : 'Camera: cinematic framing, natural composition.',
     input.lighting ? `Lighting: ${input.lighting}.` : 'Lighting: natural daylight, soft shadows.',
@@ -94,12 +98,9 @@ export function buildSceneImagePrompt(input: {
     input.videoStyle || input.style ? `Style: ${input.videoStyle || input.style}, photorealistic, premium, 8K.` : 'Style: premium commercial, photorealistic, documentary realism.',
     'Motion hint: subtle natural movement, real people, documentary realism.',
     uiHint,
-    input.voiceText ? `Narration context: ${input.voiceText.trim()}.` : '',
-    input.title ? `Scene title: ${input.title}.` : '',
-    input.projectPrompt ? `Video topic: ${input.projectPrompt.trim()}.` : '',
+    input.projectPrompt ? `Video topic (do not render as text): ${input.projectPrompt.trim()}.` : '',
     `${input.ratio ?? '9:16'} aspect ratio.`,
     `Avoid: ${avoidParts.join(', ')}.`,
-    'No text overlay, no watermark, no subtitles burned in.',
   ]
 
   return lines.filter(Boolean).join(' ')

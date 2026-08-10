@@ -37,6 +37,7 @@ export function buildDirectorPrompt(input: {
 要求：
 - story_arc 必须包含 pain → solution → result 叙事弧，可选 cta
 - 每个 beat 必须是**可拍摄的具体情境**，禁止抽象标题（如「黄金30秒视觉钩子」）
+- beat 与 visual 均不得要求画面内出现可读文字、屏幕文案或 Logo 字样（CTA 用人物手势/产品氛围表达，文字由后期叠加）
 - story_arc 各段 duration 之和应接近 ${input.duration ?? 30} 秒
 - negative_global 应包含：${COMMERCIAL_NEGATIVE_PROMPT}`
 }
