@@ -28,6 +28,15 @@ export class ProjectController {
     }
   }
 
+  getComposition = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const data = await projectService.getComposition(String(req.params.id))
+      return sendSuccess(res, data)
+    } catch (error) {
+      return next(error)
+    }
+  }
+
   create = [
     optionalAuth,
     validateBody(createProjectSchema),

@@ -1,0 +1,20 @@
+{
+  "name": "AI 工具介绍 30秒",
+  "slug": "ai-tool-intro-30",
+  "composition": "VideoComposition",
+  "duration": 30,
+  "ratio": "9:16",
+  "fps": 30,
+  "meta": {
+    "id": "ai-tool-intro-30",
+    "title": "AI 工具介绍 30秒",
+    "templateSlug": "ai-tool-intro-30",
+    "version": 1
+  },
+  "sceneBlueprint": [
+    { "order": 1, "purpose": "hook", "component": "HookScene", "durationRatio": 0.15, "camera": { "type": "push_in" }, "transition": "cut" },
+    { "order": 2, "purpose": "demo", "component": "BrowserWindow", "durationRatio": 0.35, "camera": { "type": "push_in" }, "transition": "push" },
+    { "order": 3, "purpose": "solution", "component": "FeatureReveal", "durationRatio": 0.3, "camera": { "type": "tracking" }, "transition": "crossfade" },
+    { "order": 4, "purpose": "cta", "component": "CTA", "durationRatio": 0.2, "camera": { "type": "static" }, "transition": "fade" }
+  ]
+}

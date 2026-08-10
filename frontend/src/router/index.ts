@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { getStoredToken } from '@/api/auth'
+import { useAuthStore } from '@/stores/auth'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -36,6 +37,12 @@ const routes: RouteRecordRaw[] = [
         name: 'video-plan',
         component: () => import('@/views/VideoPlan.vue'),
         meta: { title: 'AI 方案' },
+      },
+      {
+        path: 'projects/:id/director',
+        name: 'video-director',
+        component: () => import('@/views/Director.vue'),
+        meta: { title: 'AI 导演' },
       },
       {
         path: 'projects/:id/production',
@@ -83,12 +90,25 @@ const router = createRouter({
   scrollBehavior: () => ({ top: 0 }),
 })
 
-router.beforeEach((to) => {
-  if (to.meta.public) return true
-  // Allow guest access with demo user; redirect to login only when explicitly required
-  if (to.meta.requiresAuth && !getStoredToken()) {
+router.beforeEach(async (to) => {
+  const authStore = useAuthStore()
+  if (!authStore.initialized) {
+    await authStore.init()
+  }
+
+  const hasToken = !!getStoredToken()
+
+  if (to.meta.public) {
+    if (hasToken && (to.name === 'login' || to.name === 'register')) {
+      return { name: 'dashboard' }
+    }
+    return true
+  }
+
+  if (!hasToken) {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
+
   return true
 })
 

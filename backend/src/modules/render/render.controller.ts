@@ -16,7 +16,7 @@ export class RenderController {
     async (req: Request, res: Response, next: NextFunction) => {
       try {
         const data = await renderService.startRender(req.body.projectId)
-        return sendSuccess(res, data, '渲染完成', 201)
+        return sendSuccess(res, data, '渲染任务已创建', 201)
       } catch (error) {
         return next(error)
       }

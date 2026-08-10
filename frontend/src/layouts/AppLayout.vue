@@ -5,7 +5,7 @@ import { useMessage } from 'naive-ui'
 import AppHeader from '@/components/layout/AppHeader.vue'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
 import NewVideoModal from '@/components/project/NewVideoModal.vue'
-import { startRender } from '@/api/render'
+import { pollRender, startRender } from '@/api/render'
 import { useStudioStore } from '@/stores/studio'
 
 const route = useRoute()
@@ -30,6 +30,8 @@ function openNewProject() {
   showNewModal.value = true
 }
 
+const renderProgress = ref(0)
+
 async function handleQuickRender() {
   const projectId = currentProjectId.value
   if (!projectId) {
@@ -39,15 +41,26 @@ async function handleQuickRender() {
 
   const project = studioStore.currentProject
   rendering.value = true
+  renderProgress.value = 0
   renderNotice.value = `正在唤醒渲染引擎，合成视频《${project.name}》...`
 
   try {
-    const result = await startRender(projectId)
-    renderNotice.value = result.usedRemotion
-      ? `渲染成功！MP4 已输出`
-      : `预览已生成（Remotion 未就绪，已输出 HTML 预览）`
-    message.success('渲染完成')
-    router.push({ name: 'video-detail', params: { id: projectId } })
+    const started = await startRender(projectId)
+    const { promise } = pollRender(started.renderId, (status) => {
+      renderProgress.value = status.progress
+      renderNotice.value = `渲染中 ${status.progress}% · 《${project.name}》`
+    })
+    const result = await promise
+
+    if (result.status === 'SUCCESS') {
+      renderNotice.value = '渲染成功！MP4 已输出'
+      message.success('渲染完成')
+      router.push({ name: 'video-detail', params: { id: projectId } })
+    } else {
+      renderNotice.value = result.error ?? '渲染失败，已输出预览'
+      message.warning(result.error ?? 'Remotion 渲染失败，已生成 HTML 预览')
+      router.push({ name: 'video-detail', params: { id: projectId } })
+    }
   } catch (err) {
     message.error(err instanceof Error ? err.message : '渲染失败')
     renderNotice.value = null
@@ -55,6 +68,7 @@ async function handleQuickRender() {
     rendering.value = false
     window.setTimeout(() => {
       renderNotice.value = null
+      renderProgress.value = 0
     }, 3500)
   }
 }

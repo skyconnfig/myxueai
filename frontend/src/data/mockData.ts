@@ -14,6 +14,18 @@ export interface DemoScene {
   voiceoverActor: string
   transition: string
   bgmCategory: string
+  storyBeat?: string
+  shotType?: string
+  cameraMotion?: string
+  lighting?: string
+  emotion?: string
+  action?: string
+  negativePrompt?: string
+  sceneType?: string
+  purpose?: string
+  componentType?: string
+  uiSteps?: number
+  cues?: { captionStyle?: { color?: string; fontSize?: number } }
 }
 
 export interface DemoProject {

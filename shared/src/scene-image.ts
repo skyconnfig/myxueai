@@ -50,24 +50,57 @@ export function buildSceneImagePrompt(input: {
   voiceText?: string | null
   projectPrompt?: string
   style?: string | null
+  videoStyle?: string | null
   ratio?: string
+  shotType?: string | null
+  cameraMotion?: string | null
+  lighting?: string | null
+  emotion?: string | null
+  action?: string | null
+  negativePrompt?: string | null
+  negativeGlobal?: string | null
+  sceneType?: string | null
 }) {
   const visual = input.visualPrompt?.trim()
-  const voice = input.voiceText?.trim()
   const description = input.description.trim()
-  const topic = input.projectPrompt?.trim()
+  const action = input.action?.trim()
+  const environment = visual || description
 
-  const subject = visual || description
+  const cameraParts = [
+    input.shotType?.replace(/_/g, ' '),
+    input.cameraMotion?.replace(/_/g, ' '),
+  ].filter(Boolean).join(', ')
+
+  const avoidParts = [
+    input.negativePrompt?.trim(),
+    input.negativeGlobal?.trim(),
+    'plastic look, 3d render, cartoon, fake UI, floating card, template style, powerpoint slide, white rectangle frame, isolated UI screenshot',
+  ].filter(Boolean)
+
+  const sceneLine = action
+    ? `${action} in ${environment}`
+    : environment
+
+  const uiHint = input.sceneType === 'ui_demo'
+    ? 'Laptop screen showing SaaS dashboard, hands on keyboard, no isolated UI card.'
+    : ''
+
   const lines = [
-    subject,
-    voice ? `Narration context: ${voice}` : '',
-    input.title ? `Scene: ${input.title}` : '',
-    topic ? `Video topic: ${topic}` : '',
-    input.style ? `Visual style: ${input.style}` : '',
-    `${input.ratio ?? '9:16'} vertical video frame, single cinematic shot`,
-    'Photorealistic, cohesive with narration, emotionally engaging',
-    'No text overlay, no watermark, no subtitles burned in',
+    'Cinematic commercial still frame.',
+    `Scene: ${sceneLine}.`,
+    cameraParts ? `Camera: ${cameraParts}, cinematic movement feel.` : 'Camera: cinematic framing, natural composition.',
+    input.lighting ? `Lighting: ${input.lighting}.` : 'Lighting: natural daylight, soft shadows.',
+    input.emotion ? `Emotion: ${input.emotion}.` : '',
+    input.videoStyle || input.style ? `Style: ${input.videoStyle || input.style}, photorealistic, premium, 8K.` : 'Style: premium commercial, photorealistic, documentary realism.',
+    'Motion hint: subtle natural movement, real people, documentary realism.',
+    uiHint,
+    input.voiceText ? `Narration context: ${input.voiceText.trim()}.` : '',
+    input.title ? `Scene title: ${input.title}.` : '',
+    input.projectPrompt ? `Video topic: ${input.projectPrompt.trim()}.` : '',
+    `${input.ratio ?? '9:16'} aspect ratio.`,
+    `Avoid: ${avoidParts.join(', ')}.`,
+    'No text overlay, no watermark, no subtitles burned in.',
   ]
 
-  return lines.filter(Boolean).join('. ')
+  return lines.filter(Boolean).join(' ')
 }

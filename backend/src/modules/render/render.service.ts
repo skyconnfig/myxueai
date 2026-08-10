@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import type { RenderInput } from '@xueai/shared'
 import { AppError } from '../../middleware/error-handler.js'
 import { ProjectStatus } from '../../constants/status.js'
 import { config } from '../../config/index.js'
@@ -15,15 +16,34 @@ import { cleanupRenderAssets, stageRenderAssets } from './render-asset-staging.j
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const remotionRoot = path.resolve(__dirname, '../../../../remotion')
 
+const PROGRESS_RE = /XUEAI_PROGRESS:(\d+)/g
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 function publicUrl(relativePath: string) {
   return `/storage/${relativePath.replace(/\\/g, '/')}`
 }
 
-async function runRemotionRender(inputPath: string, outputPath: string): Promise<boolean> {
+function parseProgressLines(text: string): number[] {
+  const values: number[] = []
+  for (const match of text.matchAll(PROGRESS_RE)) {
+    const pct = Number(match[1])
+    if (Number.isFinite(pct)) values.push(Math.min(100, Math.max(0, pct)))
+  }
+  return values
+}
+
+async function runRemotionRender(
+  inputPath: string,
+  outputPath: string,
+  renderId: string,
+): Promise<{ ok: boolean; error?: string }> {
   return new Promise((resolve) => {
     const scriptPath = path.join(remotionRoot, 'scripts', 'render.mjs')
     if (!fs.existsSync(scriptPath)) {
-      resolve(false)
+      resolve({ ok: false, error: 'Remotion render script not found' })
       return
     }
 
@@ -44,23 +64,43 @@ async function runRemotionRender(inputPath: string, outputPath: string): Promise
 
     let stdout = ''
     let stderr = ''
+    let lastPersisted = -1
+
+    const persistProgress = (pct: number) => {
+      if (pct <= lastPersisted) return
+      lastPersisted = pct
+      void renderRepository.update(renderId, { progress: pct })
+    }
+
+    const handleChunk = (chunk: Buffer) => {
+      for (const pct of parseProgressLines(chunk.toString())) {
+        persistProgress(pct)
+      }
+    }
+
     child.stdout?.on('data', (chunk: Buffer) => {
       stdout += chunk.toString()
+      handleChunk(chunk)
     })
     child.stderr?.on('data', (chunk: Buffer) => {
       stderr += chunk.toString()
+      handleChunk(chunk)
     })
 
     child.on('close', (code) => {
-      if (code === 0 && fs.existsSync(outputPath)) resolve(true)
-      else {
-        const detail = (stderr || stdout).slice(-800)
-        console.warn('[render] Remotion render failed:', detail)
-        resolve(false)
+      if (code === 0 && fs.existsSync(outputPath)) {
+        persistProgress(100)
+        resolve({ ok: true })
+        return
       }
+      const detail = (stderr || stdout).slice(-800)
+      console.warn('[render] Remotion render failed:', detail)
+      resolve({ ok: false, error: detail || `Remotion exited with code ${code ?? 'unknown'}` })
     })
 
-    child.on('error', () => resolve(false))
+    child.on('error', (err) => {
+      resolve({ ok: false, error: err.message })
+    })
   })
 }
 
@@ -86,7 +126,7 @@ function writeFallbackPreview(
 }
 
 export class RenderService {
-  async startRender(projectId: string, onProgress?: (progress: number) => void) {
+  async startRender(projectId: string) {
     const project = await projectRepository.findById(projectId)
     if (!project) throw new AppError(404, 'PROJECT_NOT_FOUND', '项目不存在')
     if (project.scenes.length === 0) {
@@ -104,47 +144,92 @@ export class RenderService {
     })
 
     const stagedInput = stageRenderAssets(render.id, renderInput)
-
     const renderDir = path.join(storagePaths.renders, render.id)
     fs.mkdirSync(renderDir, { recursive: true })
 
     const inputPath = path.join(renderDir, 'input.json')
+    fs.writeFileSync(inputPath, JSON.stringify(stagedInput, null, 2), 'utf8')
+
+    await renderRepository.update(render.id, { status: 'RUNNING', progress: 0 })
+    await projectRepository.update(projectId, { status: ProjectStatus.RENDERING })
+
+    void this.executeRender(render.id, projectId, renderInput).catch((err) => {
+      console.error('[render] Background render failed:', err)
+    })
+
+    return {
+      renderId: render.id,
+      status: 'RUNNING',
+      progress: 0,
+    }
+  }
+
+  async startRenderAndWait(projectId: string, onProgress?: (progress: number) => void) {
+    const started = await this.startRender(projectId)
+    onProgress?.(started.progress)
+
+    while (true) {
+      const render = await this.getRender(started.renderId)
+      onProgress?.(render.progress)
+      if (render.status === 'SUCCESS') {
+        return {
+          renderId: render.id,
+          outputUrl: render.outputUrl ?? '',
+          usedRemotion: Boolean(render.outputUrl?.endsWith('.mp4')),
+          format: render.outputUrl?.endsWith('.mp4') ? 'mp4' : 'preview',
+        }
+      }
+      if (render.status === 'FAILED') {
+        throw new AppError(500, 'RENDER_FAILED', render.error ?? '渲染失败')
+      }
+      await sleep(1500)
+    }
+  }
+
+  private async executeRender(renderId: string, projectId: string, renderInput: RenderInput) {
+    const renderDir = path.join(storagePaths.renders, renderId)
+    const inputPath = path.join(renderDir, 'input.json')
     const mp4Path = path.join(renderDir, 'output.mp4')
     const previewPath = path.join(renderDir, 'preview.html')
 
-    fs.writeFileSync(inputPath, JSON.stringify(stagedInput, null, 2), 'utf8')
-    onProgress?.(10)
+    await renderRepository.update(renderId, { progress: 5 })
 
-    await renderRepository.update(render.id, { status: 'RUNNING' })
-    await projectRepository.update(projectId, { status: ProjectStatus.RENDERING })
-    onProgress?.(30)
-
-    const remotionOk = await runRemotionRender(inputPath, mp4Path)
-    onProgress?.(80)
+    const remotionResult = await runRemotionRender(inputPath, mp4Path, renderId)
 
     let outputUrl: string
-    if (remotionOk) {
+    if (remotionResult.ok) {
       outputUrl = publicUrl(path.relative(storagePaths.root, mp4Path))
     } else {
       writeFallbackPreview(renderInput, previewPath)
       outputUrl = publicUrl(path.relative(storagePaths.root, previewPath))
     }
 
-    cleanupRenderAssets(render.id)
+    cleanupRenderAssets(renderId)
 
-    await renderRepository.update(render.id, { status: 'SUCCESS', outputUrl })
+    if (remotionResult.ok) {
+      await renderRepository.update(renderId, {
+        status: 'SUCCESS',
+        outputUrl,
+        progress: 100,
+        error: null,
+      })
+      await projectRepository.update(projectId, {
+        status: ProjectStatus.COMPLETED,
+        videoUrl: outputUrl,
+      })
+      return
+    }
+
+    await renderRepository.update(renderId, {
+      status: 'FAILED',
+      outputUrl,
+      progress: 100,
+      error: remotionResult.error?.slice(0, 2000) ?? 'Render failed',
+    })
     await projectRepository.update(projectId, {
-      status: ProjectStatus.COMPLETED,
+      status: ProjectStatus.FAILED,
       videoUrl: outputUrl,
     })
-    onProgress?.(100)
-
-    return {
-      renderId: render.id,
-      outputUrl,
-      usedRemotion: remotionOk,
-      format: remotionOk ? 'mp4' : 'preview',
-    }
   }
 
   async getRender(id: string) {
@@ -159,7 +244,10 @@ export class RenderService {
       height: render.height,
       fps: render.fps,
       status: render.status,
+      progress: render.progress,
+      error: render.error ?? null,
       createdAt: render.createdAt.toISOString(),
+      updatedAt: render.updatedAt.toISOString(),
     }
   }
 
@@ -170,7 +258,10 @@ export class RenderService {
       projectId: r.projectId,
       outputUrl: r.outputUrl,
       status: r.status,
+      progress: r.progress,
+      error: r.error ?? null,
       createdAt: r.createdAt.toISOString(),
+      updatedAt: r.updatedAt.toISOString(),
     }))
   }
 }

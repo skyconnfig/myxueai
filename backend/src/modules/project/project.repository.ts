@@ -34,6 +34,10 @@ export class ProjectRepository {
         ratio: data.ratio,
         duration: data.duration ?? 30,
         style: data.style,
+        audience: data.audience,
+        goal: data.goal,
+        videoStyle: data.videoStyle,
+        emotion: data.emotion,
         status: 'DRAFT',
       },
       include: {
@@ -69,6 +73,25 @@ export class ProjectRepository {
       voiceEmotion?: string | null
       duration: number
       imageUrl?: string | null
+      storyBeat?: string | null
+      shotType?: string | null
+      cameraMotion?: string | null
+      lighting?: string | null
+      emotion?: string | null
+      action?: string | null
+      negativePrompt?: string | null
+      transition?: string | null
+      sceneType?: string | null
+      purpose?: string | null
+      componentType?: string | null
+      viewerTask?: string | null
+      inputDesc?: string | null
+      processDesc?: string | null
+      resultDesc?: string | null
+      motionDescription?: string | null
+      soundEffect?: string | null
+      assetRequirement?: unknown
+      assetSource?: string | null
     }>,
   ) {
     return prisma.$transaction(async (tx) => {
@@ -86,6 +109,25 @@ export class ProjectRepository {
             voiceEmotion: scene.voiceEmotion ?? 'professional',
             duration: scene.duration,
             imageUrl: scene.imageUrl,
+            storyBeat: scene.storyBeat,
+            shotType: scene.shotType,
+            cameraMotion: scene.cameraMotion,
+            lighting: scene.lighting,
+            emotion: scene.emotion,
+            action: scene.action,
+            negativePrompt: scene.negativePrompt,
+            transition: scene.transition ?? (index === 0 ? 'cut' : 'crossfade'),
+            sceneType: scene.sceneType ?? 'live_action',
+            purpose: scene.purpose,
+            componentType: scene.componentType,
+            viewerTask: scene.viewerTask,
+            inputDesc: scene.inputDesc,
+            processDesc: scene.processDesc,
+            resultDesc: scene.resultDesc,
+            motionDescription: scene.motionDescription,
+            soundEffect: scene.soundEffect,
+            assetRequirement: scene.assetRequirement as Prisma.InputJsonValue | undefined,
+            assetSource: scene.assetSource,
           })),
         })
       }
@@ -118,6 +160,15 @@ export class ProjectRepository {
       duration?: number
       imageUrl?: string | null
       imageSource?: string | null
+      storyBeat?: string | null
+      shotType?: string | null
+      cameraMotion?: string | null
+      lighting?: string | null
+      emotion?: string | null
+      action?: string | null
+      negativePrompt?: string | null
+      transition?: string | null
+      sceneType?: string | null
     }>,
   ) {
     return prisma.$transaction(async (tx) => {
@@ -134,6 +185,15 @@ export class ProjectRepository {
             ...(scene.voiceId !== undefined ? { voiceId: scene.voiceId } : {}),
             ...(scene.voiceEmotion !== undefined ? { voiceEmotion: scene.voiceEmotion } : {}),
             ...(scene.duration !== undefined ? { duration: scene.duration } : {}),
+            ...(scene.storyBeat !== undefined ? { storyBeat: scene.storyBeat } : {}),
+            ...(scene.shotType !== undefined ? { shotType: scene.shotType } : {}),
+            ...(scene.cameraMotion !== undefined ? { cameraMotion: scene.cameraMotion } : {}),
+            ...(scene.lighting !== undefined ? { lighting: scene.lighting } : {}),
+            ...(scene.emotion !== undefined ? { emotion: scene.emotion } : {}),
+            ...(scene.action !== undefined ? { action: scene.action } : {}),
+            ...(scene.negativePrompt !== undefined ? { negativePrompt: scene.negativePrompt } : {}),
+            ...(scene.transition !== undefined ? { transition: scene.transition } : {}),
+            ...(scene.sceneType !== undefined ? { sceneType: scene.sceneType } : {}),
           },
         })
       }

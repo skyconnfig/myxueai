@@ -19,26 +19,119 @@ model User {
   updatedAt DateTime  @updatedAt
 }
 
+model VideoTemplateStyle {
+  id             String          @id @default(cuid())
+  slug           String          @unique
+  label          String
+  colorPalette   Json?
+  typography     Json?
+  motionFamily   String?
+  negativePrompt String?
+  templates      VideoTemplate[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model VideoTemplateComponent {
+  id               String   @id @default(cuid())
+  slug             String   @unique
+  name             String
+  remotionComponent String
+  motionPattern    String?
+  defaultDuration  Int?
+  configSchema     Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model VideoTemplate {
+  id          String               @id @default(cuid())
+  slug        String               @unique
+  name        String
+  category    String
+  description String?
+  duration    Int                  @default(30)
+  ratio       String               @default("16:9")
+  styleId     String?
+  style       VideoTemplateStyle?  @relation(fields: [styleId], references: [id])
+  config      Json?
+  previewUrl  String?
+  isSystem    Boolean              @default(true)
+  scenes      VideoTemplateScene[]
+  projects    Project[]
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+}
+
+model VideoTemplateScene {
+  id            String        @id @default(cuid())
+  templateId    String
+  template      VideoTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  order         Int
+  sceneType     String
+  componentName String        @default("cinematic_still")
+  durationRatio Float         @default(0.15)
+  cameraRule    String?
+  motionRule    String?
+  promptRule    String?
+  assetRole     String        @default("illustration")
+  voiceHint     String?
+  transition    String        @default("crossfade")
+}
+
+model StockAsset {
+  id           String   @id @default(cuid())
+  provider     String
+  externalId   String
+  localPath    String?
+  url          String
+  duration     Float?
+  width        Int?
+  height       Int?
+  photographer String?
+  license      String?
+  metadata     Json?
+  createdAt    DateTime @default(now())
+
+  @@unique([provider, externalId])
+}
+
 model Project {
-  id        String   @id @default(cuid())
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id])
-  name      String
-  prompt    String
-  status    String   @default("DRAFT")
-  ratio     String   @default("9:16")
-  duration  Int      @default(30)
-  style     String?
-  videoUrl  String?
-  thumbnail String?
-  scripts   VideoScript[]
-  scenes    Scene[]
-  assets    Asset[]
-  tasks     VideoTask[]
-  renders   Render[]
-  captions  Caption[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id               String         @id @default(cuid())
+  userId           String?
+  user             User?          @relation(fields: [userId], references: [id])
+  templateId       String?
+  template         VideoTemplate? @relation(fields: [templateId], references: [id])
+  name             String
+  prompt           String
+  status           String         @default("DRAFT")
+  ratio            String         @default("9:16")
+  duration         Int            @default(30)
+  style            String?
+  audience         String?
+  goal             String?
+  videoStyle       String?
+  emotion          String?
+  platform         String?
+  directorBrief    Json?
+  directorPlan     Json?
+  storyboardStatus String?        @default("draft")
+  reviewScore      Float?
+  reviewVerdict    String?
+  lastReviewId     String?
+  bgmCategory      String?        @default("tech_pulse")
+  bgmVolume        Float?         @default(0.22)
+  videoUrl         String?
+  thumbnail        String?
+  scripts          VideoScript[]
+  scenes           Scene[]
+  assets           Asset[]
+  tasks            VideoTask[]
+  renders          Render[]
+  captions         Caption[]
+  reviews          VideoReview[]
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 }
 
 model VideoScript {
@@ -51,43 +144,65 @@ model VideoScript {
 }
 
 model Scene {
-  id           String    @id @default(cuid())
-  projectId    String
-  project      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  order        Int
-  title        String?
-  description  String
-  visualPrompt String?
-  voiceText    String?
-  voiceId      String?   @default("lyrical")
-  voiceEmotion String?   @default("professional")
-  duration     Int
-  imageUrl     String?
-  imageSource  String?
-  videoUrl     String?
-  assets       Asset[]
-  captions     Caption[]
-  createdAt    DateTime  @default(now())
+  id                String    @id @default(cuid())
+  projectId         String
+  project           Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  order             Int
+  title             String?
+  description       String
+  visualPrompt      String?
+  voiceText         String?
+  voiceId           String?   @default("lyrical")
+  voiceEmotion      String?   @default("professional")
+  duration          Int
+  imageUrl          String?
+  imageSource       String?
+  videoUrl          String?
+  purpose           String?
+  componentType     String?   @default("cinematic_still")
+  viewerTask        String?
+  inputDesc         String?
+  processDesc       String?
+  resultDesc        String?
+  motionDescription String?
+  soundEffect       String?
+  assetRequirement  Json?
+  assetSource       String?
+  stockMeta         Json?
+  cues              Json?
+  storyBeat         String?
+  shotType          String?
+  cameraMotion      String?
+  lighting          String?
+  emotion           String?
+  action            String?
+  negativePrompt    String?
+  transition        String?
+  sceneType         String?
+  assets            Asset[]
+  captions          Caption[]
+  createdAt         DateTime  @default(now())
 }
 
 model Asset {
-  id        String      @id @default(cuid())
-  projectId String
-  project   Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  sceneId   String?
-  scene     Scene?      @relation(fields: [sceneId], references: [id])
-  type      String
-  url       String
-  provider  String?
-  metadata  Json?
-  audioMeta AudioAsset?
-  createdAt DateTime    @default(now())
+  id          String      @id @default(cuid())
+  projectId   String
+  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sceneId     String?
+  scene       Scene?      @relation(fields: [sceneId], references: [id])
+  stockAssetId String?
+  type        String
+  url         String
+  provider    String?
+  metadata    Json?
+  audioMeta   AudioAsset?
+  createdAt   DateTime    @default(now())
 }
 
 model AudioAsset {
-  id       String  @id @default(cuid())
-  assetId  String  @unique
-  asset    Asset   @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  assetId  String @unique
+  asset    Asset  @relation(fields: [assetId], references: [id], onDelete: Cascade)
   duration Float?
   voice    String?
   language String?
@@ -119,14 +234,39 @@ model VideoTask {
 }
 
 model Render {
-  id          String   @id @default(cuid())
-  projectId   String
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  composition String
-  outputUrl   String?
-  width       Int
-  height      Int
-  fps         Int      @default(30)
-  status      String   @default("WAITING")
-  createdAt   DateTime @default(now())
+  id                 String        @id @default(cuid())
+  projectId          String
+  project            Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  composition        String
+  outputUrl          String?
+  outputHash         String?
+  twelvelabsIndexId  String?
+  width              Int
+  height             Int
+  fps                Int           @default(30)
+  status             String        @default("WAITING")
+  progress           Int           @default(0)
+  error              String?
+  reviews            VideoReview[]
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+}
+
+model VideoReview {
+  id                  String   @id @default(cuid())
+  projectId           String
+  project             Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  renderId            String?
+  render              Render?  @relation(fields: [renderId], references: [id])
+  source              String   @default("hybrid")
+  scores              Json
+  issues              Json
+  strengths           Json?
+  overallScore        Float
+  verdict             String
+  priorityFix         String?
+  twelvelabsIndexId   String?
+  twelvelabsVideoId   String?
+  rawAnalysis         Json?
+  createdAt           DateTime @default(now())
 }

@@ -1,5 +1,5 @@
 import { request } from './http'
-import type { GenerateScriptPayload, GenerateScriptResult, OptimizeScriptPayload, OptimizeScriptResult } from '@/types'
+import type { GenerateScriptPayload, GenerateScriptResult, OptimizeScriptPayload, OptimizeScriptResult, ChangeStylePayload, ChangeStyleResult } from '@/types'
 
 export function generateScript(payload: GenerateScriptPayload) {
   return request<GenerateScriptResult>({
@@ -13,6 +13,15 @@ export function generateScript(payload: GenerateScriptPayload) {
 export function optimizeScript(payload: OptimizeScriptPayload) {
   return request<OptimizeScriptResult>({
     url: '/ai/optimize',
+    method: 'POST',
+    data: payload,
+    timeout: 120000,
+  })
+}
+
+export function changeStyle(payload: ChangeStylePayload) {
+  return request<ChangeStyleResult>({
+    url: '/ai/change-style',
     method: 'POST',
     data: payload,
     timeout: 120000,

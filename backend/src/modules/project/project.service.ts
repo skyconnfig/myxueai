@@ -1,6 +1,7 @@
 import { AppError } from '../../middleware/error-handler.js'
 import { ProjectStatus } from '../../constants/status.js'
 import { productionService } from '../production/production.service.js'
+import { compositionBuilder } from '../render/composition.builder.js'
 import { projectRepository } from './project.repository.js'
 import type { CreateProjectInput } from './project.types.js'
 
@@ -28,6 +29,13 @@ function findSceneAudioAsset(
   return matches.find((asset) => !asset.sceneId) ?? matches[matches.length - 1]
 }
 
+function extractUiSteps(cues: unknown): number | null {
+  if (!cues || typeof cues !== 'object') return null
+  const data = cues as { sceneProps?: { steps?: unknown[] }; steps?: unknown[] }
+  const steps = data.sceneProps?.steps ?? data.steps
+  return Array.isArray(steps) ? steps.length : null
+}
+
 function toProjectDto(project: NonNullable<Awaited<ReturnType<typeof projectRepository.findById>>>) {
   const assets = project.assets ?? []
   return {
@@ -38,6 +46,13 @@ function toProjectDto(project: NonNullable<Awaited<ReturnType<typeof projectRepo
     ratio: project.ratio,
     duration: project.duration,
     style: project.style,
+    audience: project.audience,
+    goal: project.goal,
+    videoStyle: project.videoStyle,
+    emotion: project.emotion,
+    directorBrief: project.directorBrief ?? null,
+    bgmCategory: project.bgmCategory ?? 'tech_pulse',
+    bgmVolume: project.bgmVolume ?? 0.22,
     videoUrl: project.videoUrl,
     thumbnail: project.thumbnail,
     createdAt: project.createdAt.toISOString(),
@@ -58,6 +73,19 @@ function toProjectDto(project: NonNullable<Awaited<ReturnType<typeof projectRepo
         imageUrl: scene.imageUrl,
         imageSource: scene.imageSource,
         videoUrl: scene.videoUrl,
+        storyBeat: scene.storyBeat,
+        shotType: scene.shotType,
+        cameraMotion: scene.cameraMotion,
+        lighting: scene.lighting,
+        emotion: scene.emotion,
+        action: scene.action,
+        negativePrompt: scene.negativePrompt,
+        transition: scene.transition,
+        sceneType: scene.sceneType,
+        purpose: scene.purpose ?? null,
+        componentType: scene.componentType ?? null,
+        uiSteps: extractUiSteps(scene.cues),
+        cues: scene.cues ?? null,
         audioUrl: audioAsset?.url ?? null,
         audioProvider: audioAsset?.provider ?? null,
       }
@@ -93,6 +121,14 @@ export class ProjectService {
       throw new AppError(404, 'PROJECT_NOT_FOUND', 'Project not found')
     }
     return toProjectDto(project)
+  }
+
+  async getComposition(id: string) {
+    const project = await projectRepository.findById(id)
+    if (!project) {
+      throw new AppError(404, 'PROJECT_NOT_FOUND', 'Project not found')
+    }
+    return compositionBuilder.build(id)
   }
 
   async createProject(input: CreateProjectInput, userId?: string) {

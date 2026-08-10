@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from 'express'
 import { validateBody } from '../../middleware/validate.js'
 import { sendSuccess } from '../../utils/response.js'
-import { generateScriptSchema, optimizeScriptSchema } from '../project/project.types.js'
+import { generateScriptSchema, optimizeScriptSchema, changeStyleSchema } from '../project/project.types.js'
 import { scriptService } from './script.service.js'
 
 export class AiController {
@@ -23,6 +23,18 @@ export class AiController {
       try {
         const result = await scriptService.optimizeScript(req.body)
         return sendSuccess(res, result, 'Script optimized')
+      } catch (error) {
+        return next(error)
+      }
+    },
+  ]
+
+  changeStyle = [
+    validateBody(changeStyleSchema),
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const result = await scriptService.changeStyle(req.body)
+        return sendSuccess(res, result, 'Style changed')
       } catch (error) {
         return next(error)
       }

@@ -1,6 +1,6 @@
 export interface RenderCaption {
   text: string
-  style?: { font?: string; color?: string }
+  style?: { font?: string; color?: string; fontSize?: number }
 }
 
 export interface RenderScene {
@@ -8,9 +8,25 @@ export interface RenderScene {
   duration: number
   text: string
   image?: string
+  video?: string
+  mediaType?: 'image' | 'video' | 'both'
+  componentType?: string
+  purpose?: string
+  props?: Record<string, unknown>
   audio?: string
   caption?: RenderCaption
+  storyBeat?: string
+  shotType?: string
+  cameraMotion?: string
+  lighting?: string
+  emotion?: string
+  action?: string
+  negativePrompt?: string
+  transition?: string
+  sceneType?: string
 }
+
+import type { VideoCompositionJSON } from './video-composition.js'
 
 export interface RenderInput {
   duration: number
@@ -23,6 +39,17 @@ export interface RenderInput {
     url: string
     volume: number
   }
+  soundEffects?: RenderSoundEffect[]
+  /** When present, video-engine prefers this over legacy scene fields */
+  composition?: VideoCompositionJSON
+}
+
+export interface RenderSoundEffect {
+  url: string
+  startFrame: number
+  durationInFrames: number
+  volume: number
+  label?: string
 }
 
 export const RATIO_DIMENSIONS: Record<string, { width: number; height: number }> = {

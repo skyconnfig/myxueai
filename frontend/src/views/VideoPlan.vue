@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { useMessage } from 'naive-ui'
 import { Image as ImageIcon } from 'lucide-vue-next'
+import ChangeStyleModal from '@/components/studio/ChangeStyleModal.vue'
+import EditSubtitlesModal from '@/components/studio/EditSubtitlesModal.vue'
 import AiCreatePanel from '@/components/studio/AiCreatePanel.vue'
 import AiDirectorPanel from '@/components/studio/AiDirectorPanel.vue'
 import CreationPipeline from '@/components/studio/CreationPipeline.vue'
@@ -10,7 +11,6 @@ import { useVideoPlanStudio } from '@/composables/useVideoPlanStudio'
 import { DEMO_ASSETS } from '@/data/mockData'
 import { useStudioStore } from '@/stores/studio'
 
-const message = useMessage()
 const studioStore = useStudioStore()
 
 const {
@@ -31,6 +31,11 @@ const {
   isGenerating,
   isOptimizing,
   isRedubbing,
+  isChangingStyle,
+  showStyleModal,
+  isAutoEditing,
+  showSubtitlesModal,
+  isSavingSubtitles,
   generationNotice,
   showAssetPicker,
   scriptSource,
@@ -45,16 +50,17 @@ const {
   updateScene,
   handleGenerate,
   handleAiOptimize,
+  handleChangeStyle,
+  openStyleModal,
+  handleAutoEdit,
+  openSubtitlesModal,
+  handleSaveSubtitles,
   handleRedub,
   handleRegenerateImage,
   handleAddScene,
   handleDeleteScene,
   goToProduction,
 } = useVideoPlanStudio()
-
-function showComingSoon(feature: string) {
-  message.info(`${feature} 功能即将上线（Phase 3）`)
-}
 </script>
 
 <template>
@@ -83,7 +89,16 @@ function showComingSoon(feature: string) {
     <template v-else>
       <div class="flex-1 grid grid-cols-12 gap-0 overflow-hidden min-h-0">
         <div class="col-span-3 bg-surface border-r border-border flex flex-col min-h-0">
+          <DirectorBriefPanel
+            :brief="project.directorBrief"
+            :topic="aiPromptTopic"
+            :audience="project.audience"
+            :goal="project.goal"
+            :video-style="project.videoStyle"
+            :duration="project.duration"
+          />
           <AiCreatePanel
+            class="flex-1 min-h-0"
             v-model:topic="aiPromptTopic"
             v-model:style="aiStyle"
             :is-generating="isGenerating"
@@ -110,7 +125,7 @@ function showComingSoon(feature: string) {
             :style="project.category"
             :progress="generateProgress"
             :has-scenes="project.scenes.length > 0"
-            :is-optimizing="isOptimizing || isRedubbing"
+            :is-optimizing="isOptimizing || isRedubbing || isChangingStyle || isAutoEditing || isSavingSubtitles"
             :scene-start-time="previewSceneStartTime"
             @update:current-time="currentTime = $event"
             @update:is-playing="isPlaying = $event"
@@ -118,10 +133,10 @@ function showComingSoon(feature: string) {
             @update:is-muted="isMuted = $event"
             @update:volume="volume = $event"
             @ai-optimize="handleAiOptimize"
-            @change-style="showComingSoon('改变风格')"
+            @change-style="openStyleModal"
             @redub="handleRedub"
-            @auto-edit="showComingSoon('自动剪辑')"
-            @edit-subtitles="showComingSoon('修改字幕')"
+            @auto-edit="handleAutoEdit"
+            @edit-subtitles="openSubtitlesModal"
           />
         </div>
 
@@ -172,5 +187,21 @@ function showComingSoon(feature: string) {
         </div>
       </div>
     </div>
+
+    <ChangeStyleModal
+      :show="showStyleModal"
+      :current-style="project.videoStyle"
+      :loading="isChangingStyle"
+      @close="showStyleModal = false"
+      @apply="handleChangeStyle"
+    />
+
+    <EditSubtitlesModal
+      :show="showSubtitlesModal"
+      :scene="selectedScene"
+      :loading="isSavingSubtitles"
+      @close="showSubtitlesModal = false"
+      @save="handleSaveSubtitles"
+    />
   </div>
 </template>

@@ -1,0 +1,21 @@
+{
+  "name": "产品发布 45秒",
+  "slug": "product-launch-45",
+  "composition": "VideoComposition",
+  "duration": 45,
+  "ratio": "16:9",
+  "fps": 30,
+  "meta": {
+    "id": "product-launch-45",
+    "title": "产品发布 45秒",
+    "templateSlug": "product-launch-45",
+    "version": 1
+  },
+  "sceneBlueprint": [
+    { "order": 1, "purpose": "hook", "component": "cinematic_still", "durationRatio": 0.15, "camera": { "type": "push_in" }, "transition": "cut" },
+    { "order": 2, "purpose": "solution", "component": "FeatureReveal", "durationRatio": 0.25, "camera": { "type": "orbit" }, "transition": "push" },
+    { "order": 3, "purpose": "demo", "component": "DashboardAnimation", "durationRatio": 0.3, "camera": { "type": "pan_left" }, "transition": "crossfade" },
+    { "order": 4, "purpose": "result", "component": "broll_video", "durationRatio": 0.15, "camera": { "type": "tracking" }, "transition": "crossfade" },
+    { "order": 5, "purpose": "cta", "component": "CTA", "durationRatio": 0.15, "camera": { "type": "static" }, "transition": "fade" }
+  ]
+}

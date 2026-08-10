@@ -52,6 +52,60 @@ const emit = defineEmits<{
 
 const previewSizeClass = computed(() => previewFrameClass(false))
 
+const kenBurnsClass = computed(() => {
+  if (!props.isPlaying || !props.scene?.cameraMotion) return ''
+  switch (props.scene.cameraMotion) {
+    case 'slow_dolly_in':
+    case 'push_in':
+      return 'preview-ken-burns-in'
+    case 'slow_dolly_out':
+    case 'zoom_out':
+      return 'preview-ken-burns-out'
+    case 'pan_left':
+      return 'preview-ken-burns-pan-left'
+    case 'pan_right':
+      return 'preview-ken-burns-pan-right'
+    default:
+      return 'preview-ken-burns-in'
+  }
+})
+
+const storyBeatLabel = computed(() => {
+  const beat = props.scene?.storyBeat ?? props.scene?.purpose
+  if (!beat) return null
+  const map: Record<string, string> = {
+    pain: '痛点',
+    hook: '钩子',
+    problem: '痛点',
+    solution: '方案',
+    demo: '演示',
+    result: '成果',
+    cta: '号召',
+  }
+  return map[beat] ?? beat
+})
+
+const componentLabel = computed(() => {
+  const type = props.scene?.componentType
+  if (!type) return null
+  const map: Record<string, string> = {
+    ProductDemo: '产品演示',
+    BrowserWindow: '浏览器',
+    DashboardAnimation: '数据面板',
+    FeatureReveal: '功能揭示',
+    BeforeAfter: '前后对比',
+    CTA: '行动号召',
+    CinematicFallback: '电影镜头',
+  }
+  return map[type] ?? type
+})
+
+const uiStepsLabel = computed(() => {
+  const count = props.scene?.uiSteps
+  if (!count || count <= 0) return null
+  return `${count} 步交互`
+})
+
 function previewFrameClass(fullscreen: boolean) {
   if (fullscreen) {
     if (props.ratio === '16:9') return 'w-full max-w-[min(92vw,calc(78vh*16/9))] aspect-video max-h-[78vh]'
@@ -336,7 +390,8 @@ watch(
           v-if="scene.imageUrl"
           :src="scene.imageUrl"
           :alt="scene.title"
-          class="w-full h-full object-cover"
+          class="w-full h-full object-cover transition-transform duration-700"
+          :class="kenBurnsClass"
         />
         <div
           v-else
@@ -355,8 +410,28 @@ watch(
         >
           <Maximize2 class="w-4 h-4" />
         </button>
-        <div class="absolute top-3 left-3 px-2 py-0.5 glass-panel text-[10px] font-mono text-accent-blue rounded-lg">
-          {{ scene.cameraAngle }}
+        <div class="absolute top-3 left-3 flex items-center gap-2">
+          <span class="px-2 py-0.5 glass-panel text-[10px] font-mono text-accent-blue rounded-lg">
+            {{ scene.cameraAngle }}
+          </span>
+          <span
+            v-if="storyBeatLabel"
+            class="px-2 py-0.5 glass-panel text-[10px] font-mono text-warning rounded-lg"
+          >
+            {{ storyBeatLabel }}
+          </span>
+          <span
+            v-if="componentLabel"
+            class="px-2 py-0.5 glass-panel text-[10px] font-mono text-accent-purple rounded-lg"
+          >
+            {{ componentLabel }}
+          </span>
+          <span
+            v-if="uiStepsLabel"
+            class="px-2 py-0.5 glass-panel text-[10px] font-mono text-success rounded-lg"
+          >
+            {{ uiStepsLabel }}
+          </span>
         </div>
         <div class="absolute top-12 right-3 flex flex-col items-end gap-1">
           <span class="px-2 py-0.5 glass-panel text-[10px] font-mono text-white rounded-lg">

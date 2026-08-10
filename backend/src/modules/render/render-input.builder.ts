@@ -1,57 +1,50 @@
-import type { RenderInput } from '@xueai/shared'
-import { RATIO_DIMENSIONS } from '@xueai/shared'
-import { prisma } from '../../config/database.js'
-import { AppError } from '../../middleware/error-handler.js'
-
-export class RenderInputBuilder {
-  async build(projectId: string): Promise<RenderInput> {
-    const project = await prisma.project.findUnique({
-      where: { id: projectId },
-      include: {
-        scenes: { orderBy: { order: 'asc' } },
-        assets: { include: { audioMeta: true } },
-      },
-    })
-    if (!project) throw new AppError(404, 'PROJECT_NOT_FOUND', '项目不存在')
-
-    const dims = RATIO_DIMENSIONS[project.ratio] ?? RATIO_DIMENSIONS['9:16']
-
-    const scenes = project.scenes.map((scene) => {
-      const imageAsset = project.assets.find(
-        (a) => a.sceneId === scene.id && a.type === 'IMAGE',
-      )
-      const audioAsset = project.assets.find(
-        (a) => a.sceneId === scene.id && a.type === 'AUDIO',
-      )
-      const audioDuration = audioAsset?.audioMeta?.duration
-      const duration =
-        audioDuration && audioDuration > 0
-          ? Math.max(1, Math.ceil(audioDuration))
-          : scene.duration
-      return {
-        order: scene.order,
-        duration,
-        text: scene.voiceText ?? scene.description,
-        image: scene.imageUrl ?? imageAsset?.url,
-        audio: audioAsset?.url,
-        caption: {
-          text: scene.voiceText ?? scene.description,
-          style: { font: 'bold', color: '#ffffff' },
-        },
-      }
-    })
-
-    const totalDuration = scenes.reduce((sum, s) => sum + s.duration, 0)
-
-    return {
-      duration: Math.max(project.duration, totalDuration),
-      ratio: project.ratio,
-      width: dims.width,
-      height: dims.height,
-      fps: 30,
-      scenes,
-    }
-  }
-}
-
-export const renderInputBuilder = new RenderInputBuilder()
+import type { RenderInput } from '@xueai/shared'
+import { compositionBuilder } from './composition.builder.js'
+
+export class RenderInputBuilder {
+  async build(projectId: string): Promise<RenderInput> {
+    const composition = await compositionBuilder.build(projectId)
+
+    const scenes = composition.scenes.map((scene) => ({
+      order: scene.order,
+      duration: scene.duration,
+      text: scene.caption?.text ?? '',
+      image: scene.media?.image,
+      video: scene.media?.video,
+      mediaType: scene.media?.mediaType,
+      componentType: String(scene.component),
+      purpose: scene.purpose,
+      props: scene.props,
+      audio: scene.audio?.voiceUrl,
+      caption: scene.caption
+        ? {
+            text: scene.caption.text,
+            style: scene.caption.style,
+          }
+        : undefined,
+      storyBeat: scene.meta?.storyBeat,
+      shotType: scene.camera?.shotType,
+      cameraMotion: scene.camera?.type,
+      lighting: scene.camera?.lighting,
+      emotion: scene.meta?.emotion,
+      action: scene.meta?.action,
+      negativePrompt: scene.meta?.negativePrompt,
+      transition: scene.transition,
+      sceneType: scene.meta?.sceneType,
+    }))
+
+    return {
+      duration: composition.duration,
+      ratio: composition.ratio,
+      width: composition.width,
+      height: composition.height,
+      fps: composition.fps,
+      scenes,
+      backgroundMusic: composition.audio?.backgroundMusic,
+      soundEffects: composition.audio?.soundEffects,
+      composition,
+    }
+  }
+}
+
+export const renderInputBuilder = new RenderInputBuilder()

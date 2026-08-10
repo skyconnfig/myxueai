@@ -14,20 +14,38 @@ if (!inputPath || !outputPath) {
   process.exit(1)
 }
 
+function resolveTotalFrames(input) {
+  const fps = input.composition?.fps ?? input.fps ?? 30
+  if (input.composition?.duration) {
+    return Math.max(1, Math.round(input.composition.duration * fps))
+  }
+  if (input.composition?.scenes?.length) {
+    const totalSec = input.composition.scenes.reduce((sum, s) => sum + (s.duration ?? 0), 0)
+    return Math.max(1, Math.round(totalSec * fps))
+  }
+  const totalSec =
+    input.scenes?.reduce((sum, s) => sum + (s.duration ?? 0), 0) ?? input.duration ?? 30
+  return Math.max(1, Math.round(totalSec * fps))
+}
+
+function emitProgress(pct) {
+  process.stdout.write(`XUEAI_PROGRESS:${pct}\n`)
+}
+
 async function main() {
   const input = JSON.parse(fs.readFileSync(inputPath, 'utf8'))
   const entry = path.join(remotionRoot, 'src', 'index.ts')
 
   console.log('[remotion] Bundling composition...')
+  emitProgress(5)
   const serveUrl = await bundle({
     entryPoint: entry,
     webpackOverride: (config) => config,
     publicDir: path.join(remotionRoot, 'public'),
   })
 
-  const totalSec =
-    input.scenes?.reduce((sum, s) => sum + (s.duration ?? 0), 0) ?? input.duration ?? 30
-  const totalFrames = Math.max(1, Math.round(totalSec * (input.fps ?? 30)))
+  const fps = input.composition?.fps ?? input.fps ?? 30
+  const totalFrames = resolveTotalFrames(input)
 
   const composition = await selectComposition({
     serveUrl,
@@ -36,9 +54,9 @@ async function main() {
   })
 
   composition.durationInFrames = totalFrames
-  composition.width = input.width ?? composition.width
-  composition.height = input.height ?? composition.height
-  composition.fps = input.fps ?? composition.fps
+  composition.width = input.composition?.width ?? input.width ?? composition.width
+  composition.height = input.composition?.height ?? input.height ?? composition.height
+  composition.fps = fps
 
   const crf = Number(process.env.REMOTION_CRF ?? 18)
   const concurrency = Number(process.env.REMOTION_CONCURRENCY ?? 1)
@@ -50,7 +68,9 @@ async function main() {
     crf,
     concurrency,
   })
+  emitProgress(10)
 
+  let lastReported = -1
   await renderMedia({
     composition,
     serveUrl,
@@ -65,13 +85,16 @@ async function main() {
       headless: process.env.REMOTION_CHROMIUM_HEADLESS !== 'false',
     },
     onProgress: ({ progress }) => {
-      if (Math.round(progress * 100) % 10 === 0) {
-        process.stdout.write(`\r[remotion] Progress: ${Math.round(progress * 100)}%`)
+      const pct = Math.min(99, Math.max(10, Math.round(10 + progress * 89)))
+      if (pct !== lastReported) {
+        lastReported = pct
+        emitProgress(pct)
       }
     },
   })
 
-  console.log('\n[remotion] Render complete:', outputPath)
+  emitProgress(100)
+  console.log('[remotion] Render complete:', outputPath)
 }
 
 main().catch((err) => {

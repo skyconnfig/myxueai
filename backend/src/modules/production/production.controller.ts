@@ -28,7 +28,8 @@ export class ProductionController {
 
   regenerateVoice = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const data = await productionService.regenerateVoice(String(req.params.id))
+      const sceneId = typeof req.query.sceneId === 'string' ? req.query.sceneId : undefined
+      const data = await productionService.regenerateVoice(String(req.params.id), sceneId)
       return sendSuccess(res, data, 'Voice regenerated')
     } catch (error) {
       return next(error)

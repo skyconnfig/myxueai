@@ -2,7 +2,8 @@ import { computed, onActivated, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMessage } from 'naive-ui'
 import { resolveVoiceSettings, isStockImageUrl } from '@xueai/shared'
-import { generateScript, optimizeScript } from '@/api/script'
+import { generateScript, optimizeScript, changeStyle } from '@/api/script'
+import { autoEditProject, updateProjectCaptions } from '@/api/studio'
 import { startProduction, regenerateVoice, generateSceneImages } from '@/api/production'
 import { updateScene as patchScene } from '@/api/scene'
 import { DEMO_ASSETS } from '@/data/mockData'
@@ -33,6 +34,12 @@ function persistVolume(value: number) {
 
 const DEFAULT_IMAGE = DEMO_ASSETS[0]?.url ?? ''
 
+function formatCameraLabelParts(shotType?: string | null, cameraMotion?: string | null) {
+  const shot = (shotType ?? 'medium').replace(/_/g, ' ')
+  const motion = (cameraMotion ?? 'slow_dolly_in').replace(/_/g, ' ')
+  return `${shot} · ${motion}`
+}
+
 function mapScene(scene: Scene): DemoScene {
   const voice = resolveVoiceSettings(scene.voiceId, scene.voiceEmotion)
   return {
@@ -43,14 +50,26 @@ function mapScene(scene: Scene): DemoScene {
     visual: scene.visualPrompt ?? '',
     voice: scene.voiceText ?? scene.description,
     duration: scene.duration,
-    cameraAngle: '特写推镜头',
+    cameraAngle: formatCameraLabelParts(scene.shotType, scene.cameraMotion),
     imageUrl: scene.imageUrl ?? DEFAULT_IMAGE,
     audioUrl: scene.audioUrl ?? undefined,
     voiceId: scene.voiceId ?? 'lyrical',
     voiceEmotion: scene.voiceEmotion ?? 'professional',
     voiceoverActor: voice.displayName,
-    transition: 'Fade Up',
+    transition: scene.transition ?? 'crossfade',
     bgmCategory: '科技脉冲',
+    storyBeat: scene.storyBeat ?? undefined,
+    shotType: scene.shotType ?? undefined,
+    cameraMotion: scene.cameraMotion ?? undefined,
+    lighting: scene.lighting ?? undefined,
+    emotion: scene.emotion ?? undefined,
+    action: scene.action ?? undefined,
+    negativePrompt: scene.negativePrompt ?? undefined,
+    sceneType: scene.sceneType ?? undefined,
+    purpose: scene.purpose ?? undefined,
+    componentType: scene.componentType ?? undefined,
+    uiSteps: scene.uiSteps ?? undefined,
+    cues: scene.cues ?? undefined,
   }
 }
 
@@ -64,6 +83,11 @@ function mapProjectDetail(detail: ProjectDetail) {
     duration: detail.duration,
     updatedAt: new Date(detail.updatedAt).toLocaleString(),
     thumbnail: detail.thumbnail ?? DEFAULT_IMAGE,
+    audience: detail.audience,
+    goal: detail.goal,
+    videoStyle: detail.videoStyle,
+    directorBrief: detail.directorBrief,
+    bgmCategory: detail.bgmCategory ?? 'tech_pulse',
     scenes: detail.scenes.map(mapScene),
   }
 }
@@ -93,6 +117,11 @@ export function useVideoPlanStudio() {
   const isGenerating = ref(false)
   const isOptimizing = ref(false)
   const isRedubbing = ref(false)
+  const isChangingStyle = ref(false)
+  const showStyleModal = ref(false)
+  const isAutoEditing = ref(false)
+  const showSubtitlesModal = ref(false)
+  const isSavingSubtitles = ref(false)
   const isGeneratingImages = ref(false)
   const generationNotice = ref<string | null>(null)
   const showAssetPicker = ref(false)
@@ -302,6 +331,13 @@ export function useVideoPlanStudio() {
 
   function applyLocalScenePatch(sceneId: string, patch: Partial<DemoScene>) {
     if (isDemoProject.value) {
+      const current = project.value.scenes.find((item) => item.id === sceneId)
+      if (patch.shotType !== undefined || patch.cameraMotion !== undefined) {
+        patch.cameraAngle = formatCameraLabelParts(
+          patch.shotType ?? current?.shotType,
+          patch.cameraMotion ?? current?.cameraMotion,
+        )
+      }
       studioStore.updateScene(projectId.value, sceneId, patch)
       return
     }
@@ -321,6 +357,15 @@ export function useVideoPlanStudio() {
           imageUrl: patch.imageUrl ?? scene.imageUrl,
           voiceId: patch.voiceId ?? scene.voiceId,
           voiceEmotion: patch.voiceEmotion ?? scene.voiceEmotion,
+          storyBeat: patch.storyBeat ?? scene.storyBeat,
+          shotType: patch.shotType ?? scene.shotType,
+          cameraMotion: patch.cameraMotion ?? scene.cameraMotion,
+          lighting: patch.lighting ?? scene.lighting,
+          emotion: patch.emotion ?? scene.emotion,
+          action: patch.action ?? scene.action,
+          negativePrompt: patch.negativePrompt ?? scene.negativePrompt,
+          transition: patch.transition ?? scene.transition,
+          sceneType: patch.sceneType ?? scene.sceneType,
         }
       }),
     }
@@ -343,6 +388,15 @@ export function useVideoPlanStudio() {
       ...(patch.imageSource !== undefined ? { imageSource: patch.imageSource } : {}),
       ...(patch.voiceId !== undefined ? { voiceId: patch.voiceId } : {}),
       ...(patch.voiceEmotion !== undefined ? { voiceEmotion: patch.voiceEmotion } : {}),
+      ...(patch.storyBeat !== undefined ? { storyBeat: patch.storyBeat } : {}),
+      ...(patch.shotType !== undefined ? { shotType: patch.shotType } : {}),
+      ...(patch.cameraMotion !== undefined ? { cameraMotion: patch.cameraMotion } : {}),
+      ...(patch.lighting !== undefined ? { lighting: patch.lighting } : {}),
+      ...(patch.emotion !== undefined ? { emotion: patch.emotion } : {}),
+      ...(patch.action !== undefined ? { action: patch.action } : {}),
+      ...(patch.negativePrompt !== undefined ? { negativePrompt: patch.negativePrompt } : {}),
+      ...(patch.transition !== undefined ? { transition: patch.transition } : {}),
+      ...(patch.sceneType !== undefined ? { sceneType: patch.sceneType } : {}),
     }
     if (Object.keys(apiPatch).length === 0) return
 
@@ -387,6 +441,9 @@ export function useVideoPlanStudio() {
         style: aiStyle.value,
         duration: project.value.duration,
         ratio: project.value.ratio,
+        audience: projectStore.currentProject?.audience ?? undefined,
+        goal: projectStore.currentProject?.goal ?? undefined,
+        videoStyle: projectStore.currentProject?.videoStyle ?? undefined,
       })
       projectStore.currentProject = result.project
       scriptSource.value = result.source
@@ -508,6 +565,136 @@ export function useVideoPlanStudio() {
     selectedSceneId.value = scenes[0].id
   }
 
+  async function handleChangeStyle(videoStyle: string) {
+    if (project.value.scenes.length === 0) {
+      message.warning('请先生成分镜后再改变风格')
+      return
+    }
+
+    if (isDemoProject.value) {
+      const rules: Record<string, { suffix: string; motion: string }> = {
+        apple_saas_commercial: { suffix: ', Apple SaaS commercial', motion: 'slow_dolly_in' },
+        enterprise_documentary: { suffix: ', corporate documentary', motion: 'pan_left' },
+        fast_promo: { suffix: ', fast-paced promo', motion: 'push_in' },
+      }
+      const rule = rules[videoStyle] ?? rules.apple_saas_commercial
+      for (const scene of project.value.scenes) {
+        updateScene(scene.id, {
+          visual: `${scene.visual}${rule.suffix}`,
+          cameraMotion: rule.motion,
+        })
+      }
+      showStyleModal.value = false
+      message.success('演示模式：风格已更新')
+      return
+    }
+
+    if (isChangingStyle.value) return
+    if (videoStyle === projectStore.currentProject?.videoStyle) {
+      showStyleModal.value = false
+      message.info('已是当前风格')
+      return
+    }
+
+    isChangingStyle.value = true
+    generationNotice.value = '正在切换商业风格并重新生成画面...'
+    try {
+      const result = await changeStyle({ projectId: projectId.value, videoStyle })
+      projectStore.currentProject = result.project
+      showStyleModal.value = false
+      generationNotice.value = result.summary ?? '风格已切换，正在生成新画面...'
+      if (result.notice) message.warning(result.notice)
+      else message.success(result.summary ?? '风格切换成功')
+      isGeneratingImages.value = true
+      startImagePolling()
+      void workspaceStore.loadSummary()
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : '风格切换失败')
+      generationNotice.value = null
+    } finally {
+      isChangingStyle.value = false
+      window.setTimeout(() => {
+        generationNotice.value = null
+      }, 5000)
+    }
+  }
+
+  function openStyleModal() {
+    if (project.value.scenes.length === 0) {
+      message.warning('请先生成分镜后再改变风格')
+      return
+    }
+    showStyleModal.value = true
+  }
+
+  function openSubtitlesModal() {
+    if (!selectedScene.value) {
+      message.warning('请先选择要编辑的分镜')
+      return
+    }
+    showSubtitlesModal.value = true
+  }
+
+  async function handleSaveSubtitles(payload: { voiceText: string; color: string; fontSize: number }) {
+    const scene = selectedScene.value
+    if (!scene || isDemoProject.value) {
+      if (isDemoProject.value && scene) {
+        updateScene(scene.id, { voice: payload.voiceText })
+        showSubtitlesModal.value = false
+        message.success('演示模式：字幕已更新')
+      }
+      return
+    }
+
+    isSavingSubtitles.value = true
+    try {
+      const result = await updateProjectCaptions(projectId.value, [{
+        sceneId: scene.id,
+        voiceText: payload.voiceText,
+        captionStyle: { color: payload.color, fontSize: payload.fontSize },
+      }])
+      projectStore.currentProject = result.project
+      showSubtitlesModal.value = false
+      message.success('字幕已保存')
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : '保存字幕失败')
+    } finally {
+      isSavingSubtitles.value = false
+    }
+  }
+
+  async function handleAutoEdit() {
+    if (project.value.scenes.length === 0) {
+      message.warning('请先生成分镜后再自动剪辑')
+      return
+    }
+
+    if (isDemoProject.value) {
+      message.info('演示模式：已模拟时长对齐与转场优化')
+      return
+    }
+
+    if (isAutoEditing.value) return
+
+    isAutoEditing.value = true
+    generationNotice.value = '正在自动剪辑：对齐配音时长、优化转场...'
+    try {
+      const result = await autoEditProject(projectId.value)
+      projectStore.currentProject = result.project
+      generationNotice.value = result.summary
+      message.success(result.summary)
+      activeStep.value = 'edit'
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : '自动剪辑失败')
+      generationNotice.value = null
+    } finally {
+      isAutoEditing.value = false
+      window.setTimeout(() => {
+        generationNotice.value = null
+      }, 4000)
+    }
+  }
+
   async function handleRedub() {
     if (project.value.scenes.length === 0) {
       message.warning('请先生成分镜后再配音')
@@ -522,12 +709,15 @@ export function useVideoPlanStudio() {
     if (isRedubbing.value) return
 
     isRedubbing.value = true
-    generationNotice.value = '正在重新生成配音...'
+    const targetSceneId = selectedSceneId.value || undefined
+    generationNotice.value = targetSceneId
+      ? `正在为分镜 ${selectedScene.value?.index ?? ''} 重新配音...`
+      : '正在重新生成全部配音...'
     try {
-      const updated = await regenerateVoice(projectId.value)
+      const updated = await regenerateVoice(projectId.value, targetSceneId)
       projectStore.currentProject = updated
       generationNotice.value = '配音已更新，点击播放试听'
-      message.success('配音生成完成')
+      message.success(targetSceneId ? '当前分镜配音完成' : '全部配音生成完成')
     } catch (err) {
       message.error(err instanceof Error ? err.message : '配音生成失败')
       generationNotice.value = null
@@ -605,6 +795,11 @@ export function useVideoPlanStudio() {
     isGenerating,
     isOptimizing,
     isRedubbing,
+    isChangingStyle,
+    showStyleModal,
+    isAutoEditing,
+    showSubtitlesModal,
+    isSavingSubtitles,
     isGeneratingImages,
     generationNotice,
     showAssetPicker,
@@ -620,6 +815,11 @@ export function useVideoPlanStudio() {
     updateScene,
     handleGenerate,
     handleAiOptimize,
+    handleChangeStyle,
+    openStyleModal,
+    handleAutoEdit,
+    openSubtitlesModal,
+    handleSaveSubtitles,
     handleRedub,
     handleRegenerateImage,
     handleAddScene,

@@ -1,0 +1,22 @@
+{
+  "name": "SaaS 商业宣传 60秒",
+  "slug": "saas-promo-60",
+  "composition": "VideoComposition",
+  "duration": 60,
+  "ratio": "16:9",
+  "fps": 30,
+  "meta": {
+    "id": "saas-promo-60",
+    "title": "SaaS 商业宣传 60秒",
+    "templateSlug": "saas-promo-60",
+    "version": 1
+  },
+  "sceneBlueprint": [
+    { "order": 1, "purpose": "hook", "component": "cinematic_still", "durationRatio": 0.12, "camera": { "shotType": "close_up", "type": "push_in" }, "transition": "cut", "voiceHint": "强钩子问题" },
+    { "order": 2, "purpose": "problem", "component": "broll_video", "durationRatio": 0.18, "camera": { "shotType": "wide", "type": "tracking" }, "transition": "crossfade", "voiceHint": "描述痛点场景" },
+    { "order": 3, "purpose": "solution", "component": "BrowserWindow", "durationRatio": 0.2, "camera": { "shotType": "medium", "type": "push_in" }, "transition": "push", "voiceHint": "引入产品" },
+    { "order": 4, "purpose": "demo", "component": "ProductDemo", "durationRatio": 0.25, "camera": { "shotType": "over_shoulder", "type": "push_in" }, "transition": "crossfade", "voiceHint": "功能演示" },
+    { "order": 5, "purpose": "result", "component": "DashboardAnimation", "durationRatio": 0.15, "camera": { "shotType": "wide", "type": "orbit" }, "transition": "crossfade", "voiceHint": "成果数据" },
+    { "order": 6, "purpose": "cta", "component": "CTA", "durationRatio": 0.1, "camera": { "shotType": "medium", "type": "static" }, "transition": "fade", "voiceHint": "行动号召" }
+  ]
+}

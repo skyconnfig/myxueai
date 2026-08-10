@@ -160,6 +160,53 @@ const visualScore = computed(() => {
         />
       </div>
       <div class="space-y-1.5">
+        <label class="text-muted text-[11px] font-mono">电影分镜 · 5 字段</label>
+        <div class="grid grid-cols-2 gap-2">
+          <select
+            :value="scene.shotType ?? 'medium'"
+            class="bg-dark/60 border border-border rounded-lg px-2 py-1.5 text-[11px] text-white"
+            @change="emit('update', { shotType: ($event.target as HTMLSelectElement).value })"
+          >
+            <option value="close_up">特写 close_up</option>
+            <option value="medium">中景 medium</option>
+            <option value="wide">远景 wide</option>
+            <option value="tracking">跟拍 tracking</option>
+            <option value="over_shoulder">过肩 over_shoulder</option>
+          </select>
+          <select
+            :value="scene.cameraMotion ?? 'slow_dolly_in'"
+            class="bg-dark/60 border border-border rounded-lg px-2 py-1.5 text-[11px] text-white"
+            @change="emit('update', { cameraMotion: ($event.target as HTMLSelectElement).value })"
+          >
+            <option value="slow_dolly_in">推镜 dolly in</option>
+            <option value="slow_dolly_out">拉镜 dolly out</option>
+            <option value="pan_left">左摇 pan left</option>
+            <option value="pan_right">右摇 pan right</option>
+            <option value="orbit">环绕 orbit</option>
+            <option value="handheld">手持 handheld</option>
+            <option value="static">固定 static</option>
+          </select>
+        </div>
+        <input
+          :value="scene.lighting ?? ''"
+          placeholder="光影 lighting"
+          class="w-full bg-dark/60 border border-border rounded-lg px-2 py-1.5 text-[11px] text-white"
+          @input="emit('update', { lighting: ($event.target as HTMLInputElement).value })"
+        />
+        <input
+          :value="scene.emotion ?? ''"
+          placeholder="情绪 emotion"
+          class="w-full bg-dark/60 border border-border rounded-lg px-2 py-1.5 text-[11px] text-white"
+          @input="emit('update', { emotion: ($event.target as HTMLInputElement).value })"
+        />
+        <input
+          :value="scene.action ?? ''"
+          placeholder="动作 action"
+          class="w-full bg-dark/60 border border-border rounded-lg px-2 py-1.5 text-[11px] text-white"
+          @input="emit('update', { action: ($event.target as HTMLInputElement).value })"
+        />
+      </div>
+      <div class="space-y-1.5">
         <label class="text-muted text-[11px] font-mono">AI 画面 Prompt</label>
         <textarea
           rows="3"

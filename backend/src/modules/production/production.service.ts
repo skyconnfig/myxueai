@@ -3,7 +3,9 @@ import { config } from '../../config/index.js'
 import { ProjectStatus, TaskStatus, TaskType } from '../../constants/status.js'
 import { loggerError } from '../../utils/logger.js'
 import { wsHub } from '../../ws/ws.server.js'
+import { assetPlannerService } from '../asset-planner/asset-planner.service.js'
 import { assetService } from '../asset/asset.service.js'
+import { reviewService } from '../review/review.service.js'
 import { composeService } from '../compose/compose.service.js'
 import { projectRepository } from '../project/project.repository.js'
 import { projectService } from '../project/project.service.js'
@@ -13,18 +15,23 @@ import { creditsService } from '../workspace/credits.service.js'
 
 const PIPELINE: Array<{ type: string; key: string; label: string }> = [
   { type: TaskType.SCRIPT, key: 'script', label: 'AI 脚本' },
+  { type: TaskType.STOCK, key: 'stock', label: 'B-roll 素材' },
   { type: TaskType.IMAGE, key: 'image', label: '素材生成' },
   { type: TaskType.VOICE, key: 'voice', label: '配音合成' },
   { type: TaskType.VIDEO, key: 'compose', label: '视频合成' },
   { type: TaskType.RENDER, key: 'render', label: '渲染导出' },
+  { type: TaskType.REVIEW, key: 'review', label: 'AI 审片' },
 ]
 
 const TASK_LABELS: Record<string, string> = {
   SCRIPT: 'VideoPlan JSON 解析与脚本生成',
+  STOCK: 'Pexels B-roll 自动绑定',
   IMAGE: 'AI 画面素材批量生成',
   VOICE: 'TTS 配音与情感合成',
   VIDEO: '多轨时间轴自动剪辑',
   RENDER: '4K 流水线渲染导出',
+  REVIEW: 'TwelveLabs + LLM 混合审片',
+  OPTIMIZE: '审片一键优化',
 }
 
 const runningPipelines = new Set<string>()
@@ -233,6 +240,17 @@ export class ProductionService {
 
     try {
       assertNotCancelled(projectId)
+      await this.runTask(projectId, TaskType.STOCK, async (onProgress) => {
+        await onProgress(20)
+        try {
+          await assetPlannerService.autoFillProject(projectId)
+        } catch {
+          // Pexels optional — skip when unconfigured or no matches
+        }
+        await onProgress(100)
+      })
+
+      assertNotCancelled(projectId)
       await this.runTask(projectId, TaskType.IMAGE, async (onProgress) => {
         await assetService.generateImagesForProject(projectId, (p) => void onProgress(p))
       })
@@ -249,7 +267,18 @@ export class ProductionService {
 
       assertNotCancelled(projectId)
       await this.runTask(projectId, TaskType.RENDER, async (onProgress) => {
-        await renderService.startRender(projectId, (p) => void onProgress(p))
+        await renderService.startRenderAndWait(projectId, (p) => void onProgress(p))
+      })
+
+      assertNotCancelled(projectId)
+      await this.runTask(projectId, TaskType.REVIEW, async (onProgress) => {
+        await onProgress(30)
+        try {
+          await reviewService.reviewProject(projectId)
+        } catch {
+          // Review optional when LLM/TwelveLabs unavailable
+        }
+        await onProgress(100)
       })
 
       if (cancelledProjects.has(projectId)) return
@@ -291,14 +320,14 @@ export class ProductionService {
     }
   }
 
-  async regenerateVoice(projectId: string) {
+  async regenerateVoice(projectId: string, sceneId?: string) {
     const project = await projectRepository.findById(projectId)
     if (!project) throw new AppError(404, 'PROJECT_NOT_FOUND', 'Project not found')
     if (project.scenes.length === 0) {
       throw new AppError(400, 'NO_SCENES', '请先生成 AI 分镜后再配音')
     }
 
-    await assetService.generateVoiceForProject(projectId, undefined, { force: true })
+    await assetService.generateVoiceForProject(projectId, undefined, { force: true, sceneId })
     return projectService.getProject(projectId)
   }
 

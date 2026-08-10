@@ -1,6 +1,8 @@
 import { Composition } from 'remotion'
 import type { RenderInput } from '@xueai/shared'
 import { VideoComposition } from './compositions/VideoComposition'
+import { adaptRenderInput } from './video-engine/adapters/render-input.adapter'
+import { calculateCompositionMetadata } from './video-engine/core/CompositionManager'
 
 const defaultProps: RenderInput = {
   duration: 10,
@@ -29,16 +31,10 @@ export const RemotionRoot = () => {
         width={defaultProps.width}
         height={defaultProps.height}
         defaultProps={defaultProps}
-        calculateMetadata={({ props }) => {
+        calculateMetadata={({ props }: { props: RenderInput }) => {
           const input = props as RenderInput
-          const totalSec = input.scenes.reduce((sum, s) => sum + s.duration, 0)
-          const duration = Math.max(input.duration, totalSec)
-          return {
-            durationInFrames: Math.max(1, Math.round(duration * input.fps)),
-            fps: input.fps,
-            width: input.width,
-            height: input.height,
-          }
+          const composition = adaptRenderInput(input)
+          return calculateCompositionMetadata(composition)
         }}
       />
     </>

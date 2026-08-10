@@ -40,10 +40,12 @@ export function startProduction(projectId: string) {
   })
 }
 
-export function regenerateVoice(projectId: string) {
+export function regenerateVoice(projectId: string, sceneId?: string) {
   return request<ProjectDetail>({
     url: `/projects/${projectId}/production/voice`,
     method: 'POST',
+    params: sceneId ? { sceneId } : undefined,
+    timeout: 120000,
   })
 }
 

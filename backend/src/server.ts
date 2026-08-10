@@ -4,6 +4,7 @@ import { config } from './config/index.js'
 import { connectDatabase, disconnectDatabase } from './config/database.js'
 import { ensureStorageDirectories } from './config/storage.js'
 import { authService } from './modules/auth/auth.service.js'
+import { seedVideoTemplates } from './modules/template/template.seed-runner.js'
 import { logger, loggerError } from './utils/logger.js'
 import { wsHub } from './ws/ws.server.js'
 
@@ -74,6 +75,7 @@ async function shutdown(signal: string) {
 async function bootstrap() {
   ensureStorageDirectories()
   await connectDatabase()
+  await seedVideoTemplates().catch((err) => loggerError('Template seed failed', err))
 
   if (config.isDev) {
     await authService.getDemoUser()

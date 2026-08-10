@@ -25,6 +25,7 @@ export function stageRenderAssets(renderId: string, input: RenderInput): RenderI
 
   const stagedScenes = input.scenes.map((scene) => {
     let image = scene.image
+    let video = scene.video
     let audio = scene.audio
 
     const imageLocal = storageUrlToLocalPath(scene.image)
@@ -35,6 +36,14 @@ export function stageRenderAssets(renderId: string, input: RenderInput): RenderI
       image = `renders/${renderId}/${destName}`
     }
 
+    const videoLocal = storageUrlToLocalPath(scene.video)
+    if (videoLocal && fs.existsSync(videoLocal)) {
+      const ext = path.extname(videoLocal) || '.mp4'
+      const destName = `scene-${scene.order}-video${ext}`
+      copyFileSafe(videoLocal, path.join(stageDir, destName))
+      video = `renders/${renderId}/${destName}`
+    }
+
     const audioLocal = storageUrlToLocalPath(scene.audio)
     if (audioLocal && fs.existsSync(audioLocal)) {
       const ext = path.extname(audioLocal) || '.mp3'
@@ -43,7 +52,7 @@ export function stageRenderAssets(renderId: string, input: RenderInput): RenderI
       audio = `renders/${renderId}/${destName}`
     }
 
-    return { ...scene, image, audio }
+    return { ...scene, image, video, audio }
   })
 
   const totalDuration = stagedScenes.reduce((sum, s) => sum + s.duration, 0)

@@ -185,6 +185,7 @@ export class AssetService {
         await assetRepository.delete(existingImage.id)
       }
 
+      const directorBrief = project.directorBrief as { negative_global?: string; video_style?: string } | null
       const prompt = buildSceneImagePrompt({
         title: scene.title,
         description: scene.description,
@@ -192,7 +193,16 @@ export class AssetService {
         voiceText: scene.voiceText,
         projectPrompt: project.prompt,
         style: project.style,
+        videoStyle: project.videoStyle ?? directorBrief?.video_style,
         ratio: project.ratio,
+        shotType: scene.shotType,
+        cameraMotion: scene.cameraMotion,
+        lighting: scene.lighting,
+        emotion: scene.emotion,
+        action: scene.action,
+        negativePrompt: scene.negativePrompt,
+        negativeGlobal: directorBrief?.negative_global,
+        sceneType: scene.sceneType,
       })
 
       let dest: string
@@ -259,13 +269,18 @@ export class AssetService {
   async generateVoiceForProject(
     projectId: string,
     onProgress?: (progress: number) => void,
-    options?: { force?: boolean },
+    options?: { force?: boolean; sceneId?: string },
   ) {
     const force = options?.force ?? false
     const project = await projectRepository.findById(projectId)
     if (!project) throw new AppError(404, 'PROJECT_NOT_FOUND', '项目不存在')
 
-    const scenes = project.scenes
+    let scenes = project.scenes
+    if (options?.sceneId) {
+      const target = scenes.find((s) => s.id === options.sceneId)
+      if (!target) throw new AppError(404, 'SCENE_NOT_FOUND', '分镜不存在')
+      scenes = [target]
+    }
     const useElevenLabs = elevenLabsProvider.isConfigured()
     const useGatewayTts = gatewayTtsProvider.isConfigured()
 

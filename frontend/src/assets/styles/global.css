@@ -329,6 +329,42 @@ select {
   animation: wavePulse 1.2s ease-in-out infinite;
 }
 
+.preview-ken-burns-in {
+  animation: kenBurnsIn 8s ease-out forwards;
+}
+
+.preview-ken-burns-out {
+  animation: kenBurnsOut 8s ease-out forwards;
+}
+
+.preview-ken-burns-pan-left {
+  animation: kenBurnsPanLeft 8s ease-out forwards;
+}
+
+.preview-ken-burns-pan-right {
+  animation: kenBurnsPanRight 8s ease-out forwards;
+}
+
+@keyframes kenBurnsIn {
+  from { transform: scale(1); }
+  to { transform: scale(1.08); }
+}
+
+@keyframes kenBurnsOut {
+  from { transform: scale(1.1); }
+  to { transform: scale(1); }
+}
+
+@keyframes kenBurnsPanLeft {
+  from { transform: scale(1.06) translateX(24px); }
+  to { transform: scale(1.06) translateX(-24px); }
+}
+
+@keyframes kenBurnsPanRight {
+  from { transform: scale(1.06) translateX(-24px); }
+  to { transform: scale(1.06) translateX(24px); }
+}
+
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;

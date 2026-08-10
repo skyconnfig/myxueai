@@ -1,0 +1,21 @@
+{
+  "name": "教程视频 60秒",
+  "slug": "tutorial-60",
+  "composition": "VideoComposition",
+  "duration": 60,
+  "ratio": "16:9",
+  "fps": 30,
+  "meta": {
+    "id": "tutorial-60",
+    "title": "教程视频 60秒",
+    "templateSlug": "tutorial-60",
+    "version": 1
+  },
+  "sceneBlueprint": [
+    { "order": 1, "purpose": "hook", "component": "ProblemScene", "durationRatio": 0.1, "camera": { "type": "static" }, "transition": "cut" },
+    { "order": 2, "purpose": "demo", "component": "BrowserWindow", "durationRatio": 0.25, "camera": { "type": "push_in" }, "transition": "crossfade" },
+    { "order": 3, "purpose": "demo", "component": "ProductDemo", "durationRatio": 0.25, "camera": { "type": "push_in" }, "transition": "crossfade" },
+    { "order": 4, "purpose": "result", "component": "BeforeAfter", "durationRatio": 0.2, "camera": { "type": "static" }, "transition": "push" },
+    { "order": 5, "purpose": "cta", "component": "CTA", "durationRatio": 0.2, "camera": { "type": "static" }, "transition": "fade" }
+  ]
+}

@@ -64,6 +64,17 @@ export const config = {
     concurrency: Number(process.env.REMOTION_CONCURRENCY ?? 1),
     crf: Number(process.env.REMOTION_CRF ?? 18),
   },
+  pexels: {
+    apiKey: process.env.PEXELS_API_KEY ?? '',
+  },
+  twelvelabs: {
+    apiKey: process.env.TWELVELABS_API_KEY ?? '',
+    indexId: process.env.TWELVELABS_INDEX_ID ?? '',
+    baseUrl: process.env.TWELVELABS_BASE_URL ?? 'https://api.twelvelabs.io/v1.3',
+  },
+  bgm: {
+    defaultUrl: process.env.BGM_DEFAULT_URL ?? '',
+  },
   jwt: {
     secret: process.env.JWT_SECRET ?? 'xueai-dev-secret-change-in-production',
     expiresIn: process.env.JWT_EXPIRES_IN ?? '7d',

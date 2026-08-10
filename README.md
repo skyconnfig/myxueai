@@ -98,19 +98,25 @@ xueai-video-factory/
 | Auth | `/api/auth` | ✅ 登录/注册/me/资料更新 |
 | WebSocket | `/ws/projects/:id` | ✅ 生产进度推送 |
 
-### 生产流水线（6 步）
+### 生产流水线（7 步 · V1 AI 导演）
 
 ```
-① AI 脚本 → ② 自动分镜 → ③ 素材生成 → ④ 配音合成 → ⑤ 视频合成 → ⑥ 渲染导出
+① AI 导演 → ② 故事脚本 → ③ 电影分镜 → ④ 素材生成 → ⑤ 配音合成 → ⑥ 视频合成 → ⑦ 渲染导出
 ```
+
+V1 升级要点：
+- **两阶段 AI 生成**：Director Brief（pain→solution→result 故事弧）→ 电影分镜（5 字段：镜头/运动/光影/情绪/动作）
+- **商业片 Prompt**：生图含 camera/lighting/negative prompt，避免 PPT 卡片感
+- **Remotion 商业片渲染**：全屏构图 + Ken Burns + 场景转场
 
 | 步骤 | 实现 | 说明 |
 |------|------|------|
+| 导演 | ✅ | `director.service` 两阶段 LLM / pain-solution 预设 |
 | 脚本 | ✅ | 分镜已在 Plan 页生成时标记完成 |
-| 配图 | ✅ | z-image-turbo / 占位 SVG 降级 |
+| 配图 | ✅ | z-image-turbo + 商业片 Prompt 模板 |
 | 配音 | ✅ | speech-2.8-hd，支持分镜级音色与情绪 |
 | 合成 | ✅ | 时间轴 / 字幕 / duration 同步 |
-| 渲染 | ✅ | Remotion MP4（`enforceAudioTrack` 保留配音） |
+| 渲染 | ✅ | Remotion 全屏 + Ken Burns + transitions |
 
 ### AI 生产说明
 

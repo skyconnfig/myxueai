@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { sendSuccess } from '../../utils/response.js'
 import { taskService } from '../task/task.service.js'
+import { templateService } from '../template/template.service.js'
 import { creditsService } from './credits.service.js'
 import { statsService } from './stats.service.js'
 import { VIDEO_TEMPLATES } from './templates.data.js'
@@ -28,8 +29,30 @@ router.get('/summary', async (_req, res, next) => {
   }
 })
 
-router.get('/templates', (_req, res) => {
-  return sendSuccess(res, VIDEO_TEMPLATES)
+router.get('/templates', async (_req, res) => {
+  try {
+    const dbTemplates = await templateService.list()
+    if (dbTemplates.length > 0) {
+      const mapped = dbTemplates.map((t) => ({
+        id: t.slug,
+        slug: t.slug,
+        name: t.name,
+        tag: t.category,
+        category: t.category,
+        ratio: t.ratio,
+        duration: t.duration,
+        style: t.style?.label ?? t.category,
+        prompt: (t.config as { prompt?: string })?.prompt ?? `使用 ${t.name} 模板创建商业视频`,
+        thumbnail: t.previewUrl ?? '',
+        creditsCost: 200,
+        sceneCount: t.scenes.length,
+      }))
+      return sendSuccess(res, mapped)
+    }
+    return sendSuccess(res, VIDEO_TEMPLATES)
+  } catch {
+    return sendSuccess(res, VIDEO_TEMPLATES)
+  }
 })
 
 export default router

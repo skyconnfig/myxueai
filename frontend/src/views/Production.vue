@@ -5,6 +5,7 @@ import { useMessage } from 'naive-ui'
 import { CheckCircle2, ChevronRight, Circle, Download, Loader2, Sparkles, XCircle } from 'lucide-vue-next'
 import { fetchProductionStatus, startProduction, type ProductionStatus } from '@/api/production'
 import VideoOutputPlayer from '@/components/video/VideoOutputPlayer.vue'
+import ReviewReport from '@/components/intelligence/ReviewReport.vue'
 import { useProjectWebSocket } from '@/composables/useProjectWebSocket'
 import { useWorkspaceStore } from '@/stores/workspace'
 
@@ -21,12 +22,15 @@ const error = ref<string | null>(null)
 const completedNotified = ref(false)
 
 const pipelineItems = [
-  { id: 'script', label: '① AI 脚本' },
-  { id: 'storyboard', label: '② 自动分镜' },
-  { id: 'image', label: '③ 素材生成' },
-  { id: 'voice', label: '④ 配音合成' },
-  { id: 'compose', label: '⑤ 视频合成' },
-  { id: 'render', label: '⑥ 渲染导出' },
+  { id: 'director', label: '① AI 导演' },
+  { id: 'script', label: '② 故事脚本' },
+  { id: 'storyboard', label: '③ 电影分镜' },
+  { id: 'stock', label: '④ B-roll' },
+  { id: 'image', label: '⑤ 素材生成' },
+  { id: 'voice', label: '⑥ 配音合成' },
+  { id: 'compose', label: '⑦ 视频合成' },
+  { id: 'render', label: '⑧ 渲染导出' },
+  { id: 'review', label: '⑨ AI 审片' },
 ]
 
 const stepIcon = (stepStatus: string) => {
@@ -37,9 +41,17 @@ const stepIcon = (stepStatus: string) => {
 }
 
 const activePipelineIndex = computed(() => {
-  if (!status.value) return 2
-  const map: Record<string, number> = { script: 0, image: 2, voice: 3, compose: 4, render: 5 }
-  return map[status.value.activeStep] ?? 2
+  if (!status.value) return 3
+  const map: Record<string, number> = {
+    script: 1,
+    stock: 3,
+    image: 4,
+    voice: 5,
+    compose: 6,
+    render: 7,
+    review: 8,
+  }
+  return map[status.value.activeStep] ?? 3
 })
 
 const isMp4 = computed(() => status.value?.videoUrl?.toLowerCase().includes('.mp4') ?? false)
@@ -243,6 +255,15 @@ onUnmounted(() => {
             {{ isMp4 ? '下载 MP4' : '下载预览' }}
           </button>
         </div>
+
+        <ReviewReport
+          v-if="status.isComplete && isMp4"
+          :project-id="projectId"
+          :is-complete="status.isComplete"
+          :is-mp4="isMp4"
+          auto-review
+          @rerender-started="loadStatus"
+        />
 
         <div class="glass-panel flex flex-col overflow-hidden flex-1 min-h-0">
           <div class="px-4 py-3 border-b border-border text-[11px] font-mono font-semibold text-muted uppercase">

@@ -41,6 +41,7 @@ const waveformHeights = [40, 70, 30, 90, 60, 100, 40, 80, 50, 90, 30, 70, 100, 6
       >
         <div class="ui-card__label mb-1">
           {{ String(idx + 1).padStart(2, '0') }} · {{ scene.duration }}s
+          <span v-if="scene.storyBeat" class="text-warning ml-1">{{ scene.storyBeat }}</span>
         </div>
         <div class="ui-card__title truncate mb-1">{{ scene.title }}</div>
         <div class="ui-card__desc line-clamp-2 flex-1">{{ scene.voice }}</div>

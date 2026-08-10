@@ -31,7 +31,12 @@ export class RenderRepository {
     })
   }
 
-  update(id: string, data: { status?: string; outputUrl?: string | null }) {
+  update(id: string, data: {
+    status?: string
+    outputUrl?: string | null
+    progress?: number
+    error?: string | null
+  }) {
     return prisma.render.update({ where: { id }, data })
   }
 }
