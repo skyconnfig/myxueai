@@ -1,0 +1,129 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  password  String
+  name      String?
+  avatar    String?
+  credits   Int       @default(12560)
+  projects  Project[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Project {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  name      String
+  prompt    String
+  status    String   @default("DRAFT")
+  ratio     String   @default("9:16")
+  duration  Int      @default(30)
+  style     String?
+  videoUrl  String?
+  thumbnail String?
+  scripts   VideoScript[]
+  scenes    Scene[]
+  assets    Asset[]
+  tasks     VideoTask[]
+  renders   Render[]
+  captions  Caption[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model VideoScript {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  content   Json
+  version   Int      @default(1)
+  createdAt DateTime @default(now())
+}
+
+model Scene {
+  id           String    @id @default(cuid())
+  projectId    String
+  project      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  order        Int
+  title        String?
+  description  String
+  visualPrompt String?
+  voiceText    String?
+  duration     Int
+  imageUrl     String?
+  videoUrl     String?
+  assets       Asset[]
+  captions     Caption[]
+  createdAt    DateTime  @default(now())
+}
+
+model Asset {
+  id        String      @id @default(cuid())
+  projectId String
+  project   Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sceneId   String?
+  scene     Scene?      @relation(fields: [sceneId], references: [id])
+  type      String
+  url       String
+  provider  String?
+  metadata  Json?
+  audioMeta AudioAsset?
+  createdAt DateTime    @default(now())
+}
+
+model AudioAsset {
+  id       String  @id @default(cuid())
+  assetId  String  @unique
+  asset    Asset   @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  duration Float?
+  voice    String?
+  language String?
+}
+
+model Caption {
+  id        String  @id @default(cuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sceneId   String?
+  scene     Scene?  @relation(fields: [sceneId], references: [id])
+  text      String
+  startTime Float
+  endTime   Float
+  style     Json?
+}
+
+model VideoTask {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  type      String
+  status    String   @default("WAITING")
+  progress  Int      @default(0)
+  result    Json?
+  error     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Render {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  composition String
+  outputUrl   String?
+  width       Int
+  height      Int
+  fps         Int      @default(30)
+  status      String   @default("WAITING")
+  createdAt   DateTime @default(now())
+}

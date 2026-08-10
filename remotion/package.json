@@ -1,0 +1,27 @@
+{
+  "name": "remotion",
+  "version": "1.0.0-mvp",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts VideoComposition",
+    "render:cli": "node scripts/render.mjs",
+    "browser:ensure": "remotion browser ensure",
+    "build": "remotion bundle src/index.ts",
+    "postinstall": "remotion browser ensure"
+  },
+  "dependencies": {
+    "@remotion/bundler": "^4.0.260",
+    "@remotion/cli": "^4.0.260",
+    "@remotion/renderer": "^4.0.260",
+    "@xueai/shared": "workspace:*",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.260"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.18",
+    "typescript": "^5.7.3"
+  }
+}

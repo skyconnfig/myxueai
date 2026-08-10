@@ -1,0 +1,58 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Database
+backend/prisma/dev.db
+backend/prisma/dev.db-journal
+*.db
+*.db-journal
+
+# Local file storage
+storage/uploads/*
+storage/images/*
+storage/audio/*
+storage/renders/*
+storage/temp/*
+!storage/**/.gitkeep
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Remotion
+remotion/public/renders/
+remotion/out/
+
+# Test / coverage
+coverage/
+.nyc_output/
+
+# Misc
+.netlify/
+.remember/
+_ref/
