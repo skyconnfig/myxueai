@@ -1,5 +1,5 @@
 import type { RenderInput, RenderScene, VideoCompositionJSON } from '@xueai/shared'
-import { adaptRenderInput, adaptRenderScene } from './render-input.adapter.js'
+import { adaptRenderInput, adaptRenderScene } from './render-input.adapter'
 
 /** Convert VideoCompositionJSON back to legacy RenderInput for preview fallbacks */
 export function compositionToRenderInput(composition: VideoCompositionJSON): RenderInput {

@@ -28,7 +28,7 @@ const typeIcons = { IMAGE: ImageIcon, AUDIO: Music, VIDEO: Film }
 async function loadAssets() {
   loading.value = true
   try {
-    assets.value = await fetchAssets()
+    assets.value = await fetchAssets({ projectId: 'library' })
   } catch (err) {
     message.error(err instanceof Error ? err.message : '加载失败')
   } finally {
@@ -61,11 +61,18 @@ async function onFileChange(event: Event) {
   }
 }
 
-async function handleDelete(id: string) {
+async function handleDelete(asset: AssetDto) {
+  const title = assetTitle(asset)
+  if (!window.confirm(`确定删除「${title}」？此操作会同时删除 storage 中的文件。`)) return
+
   try {
-    await deleteAsset(id)
-    assets.value = assets.value.filter((a) => a.id !== id)
-    message.success('已删除')
+    const result = await deleteAsset(asset.id)
+    assets.value = assets.value.filter((a) => a.id !== asset.id)
+    if (result?.fileDeleted === false) {
+      message.warning('数据库记录已删除，但 storage 文件可能不存在或已移除')
+    } else {
+      message.success('已删除')
+    }
   } catch (err) {
     message.error(err instanceof Error ? err.message : '删除失败')
   }
@@ -150,7 +157,7 @@ onMounted(loadAssets)
           <button
             type="button"
             class="absolute top-2 right-2 px-1.5 py-0.5 bg-danger/80 text-white text-[9px] rounded opacity-0 group-hover:opacity-100"
-            @click.stop="handleDelete(asset.id)"
+            @click.stop="handleDelete(asset)"
           >
             删除
           </button>

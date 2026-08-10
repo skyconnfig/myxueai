@@ -40,6 +40,24 @@ function formatCameraLabelParts(shotType?: string | null, cameraMotion?: string 
   return `${shot} · ${motion}`
 }
 
+function sceneHasVoiceText(scene: {
+  voiceText?: string | null
+  description?: string | null
+  voice?: string
+}) {
+  const text = scene.voice ?? scene.voiceText ?? scene.description
+  return Boolean(text?.trim())
+}
+
+function sceneNeedsVoice(scene: {
+  voiceText?: string | null
+  description?: string | null
+  voice?: string
+  audioUrl?: string | null
+}) {
+  return sceneHasVoiceText(scene) && !scene.audioUrl
+}
+
 function mapScene(scene: Scene): DemoScene {
   const voice = resolveVoiceSettings(scene.voiceId, scene.voiceEmotion)
   return {
@@ -68,7 +86,8 @@ function mapScene(scene: Scene): DemoScene {
     sceneType: scene.sceneType ?? undefined,
     purpose: scene.purpose ?? undefined,
     componentType: scene.componentType ?? undefined,
-    uiSteps: scene.uiSteps ?? undefined,
+    uiSteps: scene.uiSteps ?? scene.uiStepDetails?.length ?? undefined,
+    uiStepDetails: scene.uiStepDetails ?? undefined,
     cues: scene.cues ?? undefined,
   }
 }
@@ -123,6 +142,7 @@ export function useVideoPlanStudio() {
   const showSubtitlesModal = ref(false)
   const isSavingSubtitles = ref(false)
   const isGeneratingImages = ref(false)
+  const isGeneratingVoice = ref(false)
   const generationNotice = ref<string | null>(null)
   const showAssetPicker = ref(false)
   const scriptSource = ref<'llm' | 'preset' | null>(null)
@@ -192,6 +212,15 @@ export function useVideoPlanStudio() {
     return sceneStartTimeFor(scene.id)
   })
 
+  const selectedSceneLocalTime = computed(() => {
+    const scene = selectedScene.value
+    if (!scene) return null
+    const start = sceneStartTimeFor(scene.id)
+    const local = currentTime.value - start
+    if (local < 0 || local > scene.duration) return null
+    return local
+  })
+
   const generateProgress = computed(() => {
     if (project.value.scenes.length === 0) return 15
     if (activeStep.value === 'material') return 55
@@ -228,6 +257,9 @@ export function useVideoPlanStudio() {
             })
           startImagePolling()
         }
+        if (detail.scenes.some(sceneNeedsVoice)) {
+          void ensurePreviewVoices()
+        }
       }
     } catch (err) {
       loadError.value = err instanceof Error ? err.message : '加载项目失败'
@@ -245,6 +277,55 @@ export function useVideoPlanStudio() {
   )
 
   let timer: number | undefined
+
+  async function ensurePreviewVoices(sceneId?: string) {
+    if (isDemoProject.value) return true
+    const scenes = sceneId
+      ? project.value.scenes.filter((scene) => scene.id === sceneId)
+      : project.value.scenes
+    if (!scenes.some(sceneNeedsVoice)) return true
+    if (isGeneratingVoice.value) return false
+
+    isGeneratingVoice.value = true
+    generationNotice.value = sceneId
+      ? `正在为分镜 ${scenes[0]?.index ?? ''} 生成配音...`
+      : '正在生成预览配音，完成后可播放试听...'
+    try {
+      const updated = await regenerateVoice(projectId.value, sceneId)
+      projectStore.currentProject = updated
+      generationNotice.value = '配音已就绪，点击播放试听'
+      window.setTimeout(() => {
+        if (generationNotice.value === '配音已就绪，点击播放试听') {
+          generationNotice.value = null
+        }
+      }, 3000)
+      return true
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : '配音生成失败')
+      generationNotice.value = null
+      return false
+    } finally {
+      isGeneratingVoice.value = false
+    }
+  }
+
+  async function handlePreviewPlaying(next: boolean) {
+    if (!next) {
+      isPlaying.value = false
+      return
+    }
+    if (!isDemoProject.value && project.value.scenes.some(sceneNeedsVoice)) {
+      const ok = await ensurePreviewVoices()
+      if (!ok) return
+      message.info('配音已就绪，请再次点击播放')
+      return
+    }
+    if (selectedSceneId.value) {
+      currentTime.value = sceneStartTimeFor(selectedSceneId.value)
+    }
+    isPlaying.value = true
+  }
+
   watch(isPlaying, (playing, wasPlaying) => {
     if (playing && !wasPlaying && selectedSceneId.value) {
       currentTime.value = sceneStartTimeFor(selectedSceneId.value)
@@ -408,6 +489,9 @@ export function useVideoPlanStudio() {
         try {
           const updated = await patchScene(sceneId, apiPatch)
           projectStore.currentProject = updated
+          if (apiPatch.voiceText !== undefined) {
+            void ensurePreviewVoices(sceneId)
+          }
         } catch (err) {
           message.error(err instanceof Error ? err.message : '保存分镜失败')
         }
@@ -450,11 +534,22 @@ export function useVideoPlanStudio() {
       activeStep.value = 'storyboard'
       if (result.project.scenes[0]) selectedSceneId.value = result.project.scenes[0].id
       const sourceLabel = result.source === 'llm' ? 'DeepSeek AI' : '智能预设'
-      generationNotice.value = `已完成 ${result.project.scenes.length} 镜头（${sourceLabel}），正在生成匹配画面...`
+      generationNotice.value = `已完成 ${result.project.scenes.length} 镜头（${sourceLabel}），正在生成画面与配音...`
       if (result.notice) message.warning(result.notice)
       else message.success('AI 故事板生成成功')
       isGeneratingImages.value = true
+      void generateSceneImages(projectId.value)
+        .then((updated) => {
+          projectStore.currentProject = updated
+        })
+        .catch(() => {
+          message.warning('部分画面生成失败，可点击「AI 重新生成画面」重试')
+        })
+        .finally(() => {
+          isGeneratingImages.value = false
+        })
       startImagePolling()
+      void ensurePreviewVoices()
       void workspaceStore.loadSummary()
     } catch (err) {
       message.error(err instanceof Error ? err.message : '生成失败')
@@ -801,6 +896,7 @@ export function useVideoPlanStudio() {
     showSubtitlesModal,
     isSavingSubtitles,
     isGeneratingImages,
+    isGeneratingVoice,
     generationNotice,
     showAssetPicker,
     scriptSource,
@@ -811,9 +907,11 @@ export function useVideoPlanStudio() {
     activeSceneStartTime,
     previewScene,
     previewSceneStartTime,
+    selectedSceneLocalTime,
     generateProgress,
     updateScene,
     handleGenerate,
+    handlePreviewPlaying,
     handleAiOptimize,
     handleChangeStyle,
     openStyleModal,

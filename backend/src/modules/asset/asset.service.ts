@@ -9,10 +9,12 @@ import { elevenLabsProvider } from '../ai/providers/elevenlabs.provider.js'
 import { gatewayTtsProvider } from '../ai/providers/gateway-tts.provider.js'
 import { logger } from '../../utils/logger.js'
 import { AssetType } from '../../constants/status.js'
+import { prisma } from '../../config/database.js'
 import { projectRepository } from '../project/project.repository.js'
 import { sceneRepository } from '../scene/scene.repository.js'
 import { assetRepository } from './asset.repository.js'
 import { estimateBufferMp3DurationSeconds, estimateMp3DurationSeconds } from '../../utils/audio-duration.js'
+import { deleteStorageFileByUrl } from '../../utils/storage-files.js'
 
 function toAssetDto(asset: {
   id: string
@@ -101,7 +103,11 @@ export class AssetService {
   }
 
   async listAssets(filters: { projectId?: string; type?: string; userId?: string }) {
-    const assets = await assetRepository.findMany(filters)
+    let projectId = filters.projectId
+    if (projectId === 'library') {
+      projectId = await this.getOrCreateLibraryProject(filters.userId)
+    }
+    const assets = await assetRepository.findMany({ ...filters, projectId })
     return assets.map((a) => toAssetDto(a))
   }
 
@@ -145,7 +151,32 @@ export class AssetService {
   async deleteAsset(id: string) {
     const asset = await assetRepository.findById(id)
     if (!asset) throw new AppError(404, 'ASSET_NOT_FOUND', '素材不存在')
+
+    await this.detachSceneReferences(asset)
+
+    const fileDeleted = deleteStorageFileByUrl(asset.url)
     await assetRepository.delete(id)
+
+    return { id, fileDeleted, url: asset.url }
+  }
+
+  private async detachSceneReferences(asset: {
+    id: string
+    sceneId: string | null
+    url: string
+    type: string
+  }) {
+    if (!asset.sceneId) return
+
+    const scene = await sceneRepository.findById(asset.sceneId)
+    if (!scene) return
+
+    if (asset.type === AssetType.IMAGE && scene.imageUrl === asset.url) {
+      await sceneRepository.update(asset.sceneId, { imageUrl: '' })
+    }
+    if (asset.type === AssetType.VIDEO && scene.videoUrl === asset.url) {
+      await prisma.scene.update({ where: { id: asset.sceneId }, data: { videoUrl: null } })
+    }
   }
 
   async generateImagesForProject(

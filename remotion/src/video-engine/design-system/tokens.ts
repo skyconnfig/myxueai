@@ -4,6 +4,8 @@ export const designTokens = {
     surface: '#0F1419',
     accent: '#6366F1',
     accentBlue: '#3B82F6',
+    /** Remotion brand blue — https://github.com/remotion-dev/brand */
+    remotionBlue: '#0C85F3',
     text: '#FFFFFF',
     muted: '#94A3B8',
     success: '#22C55E',

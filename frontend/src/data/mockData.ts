@@ -1,3 +1,5 @@
+import type { UiStep } from '@xueai/shared'
+
 export interface DemoScene {
   id: string
   index: number
@@ -25,6 +27,7 @@ export interface DemoScene {
   purpose?: string
   componentType?: string
   uiSteps?: number
+  uiStepDetails?: UiStep[]
   cues?: { captionStyle?: { color?: string; fontSize?: number } }
 }
 
@@ -37,6 +40,7 @@ export interface DemoProject {
   duration: number
   updatedAt: string
   thumbnail: string
+  bgmCategory?: string
   views?: number
   scenes: DemoScene[]
 }

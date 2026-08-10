@@ -34,6 +34,7 @@ const props = defineProps<{
   progress: number
   hasScenes: boolean
   isOptimizing?: boolean
+  isAudioLoading?: boolean
   sceneStartTime?: number
 }>()
 
@@ -153,7 +154,9 @@ const aiActions = [
 ]
 
 const audioEl = ref<HTMLAudioElement | null>(null)
+const hasVoiceScript = computed(() => Boolean(props.scene?.voice?.trim()))
 const hasAudio = computed(() => Boolean(props.scene?.audioUrl))
+const audioPending = computed(() => hasVoiceScript.value && !hasAudio.value)
 const loadedAudioUrl = ref<string | null>(null)
 const volumePercent = computed(() => Math.round(effectiveVolume() * 100))
 
@@ -301,6 +304,7 @@ async function maintainPlayback() {
 }
 
 function togglePlay() {
+  if (props.isAudioLoading) return
   const next = !props.isPlaying
   if (next) {
     emit('update:isPlaying', true)
@@ -438,7 +442,19 @@ watch(
             {{ currentTime.toFixed(1) }}s / {{ totalDuration }}s
           </span>
           <span
-            v-if="hasAudio"
+            v-if="isAudioLoading"
+            class="px-2 py-0.5 glass-panel text-[10px] font-mono text-warning rounded-lg animate-pulse"
+          >
+            配音生成中...
+          </span>
+          <span
+            v-else-if="audioPending"
+            class="px-2 py-0.5 glass-panel text-[10px] font-mono text-warning rounded-lg"
+          >
+            待生成配音
+          </span>
+          <span
+            v-else-if="hasAudio"
             class="px-2 py-0.5 glass-panel text-[10px] font-mono rounded-lg"
             :class="isMuted ? 'text-muted' : 'text-success'"
           >
@@ -483,6 +499,8 @@ watch(
         <button
           type="button"
           class="btn-soft btn-soft--primary !w-9 !h-9 !p-0 !rounded-lg"
+          :disabled="isAudioLoading"
+          :title="isAudioLoading ? '配音生成中' : audioPending ? '配音准备中，请稍候' : undefined"
           @click="togglePlay"
         >
           <Pause v-if="isPlaying" class="w-4 h-4 text-accent-blue fill-current" />
@@ -592,7 +610,19 @@ watch(
                 {{ currentTime.toFixed(1) }}s / {{ totalDuration }}s
               </span>
               <span
-                v-if="hasAudio"
+                v-if="isAudioLoading"
+                class="px-2.5 py-1 glass-panel text-xs font-mono text-warning rounded-lg animate-pulse"
+              >
+                配音生成中...
+              </span>
+              <span
+                v-else-if="audioPending"
+                class="px-2.5 py-1 glass-panel text-xs font-mono text-warning rounded-lg"
+              >
+                待生成配音
+              </span>
+              <span
+                v-else-if="hasAudio"
                 class="px-2.5 py-1 glass-panel text-xs font-mono rounded-lg"
                 :class="isMuted ? 'text-muted' : 'text-success'"
               >
@@ -616,6 +646,7 @@ watch(
             <button
               type="button"
               class="btn-soft btn-soft--primary !w-11 !h-11 !p-0 !rounded-xl"
+              :disabled="isAudioLoading"
               @click="togglePlay"
             >
               <Pause v-if="isPlaying" class="w-5 h-5 text-accent-blue fill-current" />

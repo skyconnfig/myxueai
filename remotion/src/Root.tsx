@@ -1,24 +1,11 @@
 import { Composition } from 'remotion'
 import type { RenderInput } from '@xueai/shared'
 import { VideoComposition } from './compositions/VideoComposition'
+import { studioSaasDemoProps } from './fixtures/studio-saas-demo'
 import { adaptRenderInput } from './video-engine/adapters/render-input.adapter'
 import { calculateCompositionMetadata } from './video-engine/core/CompositionManager'
 
-const defaultProps: RenderInput = {
-  duration: 10,
-  ratio: '9:16',
-  width: 1080,
-  height: 1920,
-  fps: 30,
-  scenes: [
-    {
-      order: 1,
-      duration: 5,
-      text: 'XueAI Video Factory',
-      caption: { text: 'XueAI Video Factory', style: { color: '#ffffff' } },
-    },
-  ],
-}
+const defaultProps: RenderInput = studioSaasDemoProps
 
 export const RemotionRoot = () => {
   return (

@@ -5,7 +5,7 @@ export {
 export { SceneRenderer } from './core/SceneRenderer.js'
 export { timelineEngine, secToFrames, buildSceneTimeline } from './core/TimelineEngine.js'
 export { transitionEngine } from './core/TransitionEngine.js'
-export { adaptRenderInput, adaptRenderScene } from './adapters/render-input.adapter.js'
+export { adaptRenderInput, adaptRenderScene } from './adapters/render-input.adapter'
 export {
   compositionToRenderInput,
   mergeRenderInputWithComposition,

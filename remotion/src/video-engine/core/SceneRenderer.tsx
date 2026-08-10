@@ -39,8 +39,9 @@ export const SceneRenderer: React.FC<SceneRendererProps> = ({
     'CTA',
   ])
   const showCaption =
-    !isCinematicFallbackComponent(String(enrichedScene.component)) &&
-    !commercialComponents.has(String(enrichedScene.component))
+    Boolean(enrichedScene.caption?.text) &&
+    !commercialComponents.has(String(enrichedScene.component)) &&
+    !isCinematicFallbackComponent(String(enrichedScene.component))
 
   const content = (
     <AbsoluteFill style={{ backgroundColor: '#05070A', overflow: 'hidden' }}>

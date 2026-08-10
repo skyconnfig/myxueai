@@ -31,6 +31,7 @@ const {
   isGenerating,
   isOptimizing,
   isRedubbing,
+  isGeneratingVoice,
   isChangingStyle,
   showStyleModal,
   isAutoEditing,
@@ -46,9 +47,11 @@ const {
   activeSceneStartTime,
   previewScene,
   previewSceneStartTime,
+  selectedSceneLocalTime,
   generateProgress,
   updateScene,
   handleGenerate,
+  handlePreviewPlaying,
   handleAiOptimize,
   handleChangeStyle,
   openStyleModal,
@@ -125,10 +128,11 @@ const {
             :style="project.category"
             :progress="generateProgress"
             :has-scenes="project.scenes.length > 0"
-            :is-optimizing="isOptimizing || isRedubbing || isChangingStyle || isAutoEditing || isSavingSubtitles"
+            :is-optimizing="isOptimizing || isRedubbing || isChangingStyle || isAutoEditing || isSavingSubtitles || isGeneratingVoice"
+            :is-audio-loading="isGeneratingVoice"
             :scene-start-time="previewSceneStartTime"
             @update:current-time="currentTime = $event"
-            @update:is-playing="isPlaying = $event"
+            @update:is-playing="handlePreviewPlaying"
             @update:show-subtitles="showSubtitles = $event"
             @update:is-muted="isMuted = $event"
             @update:volume="volume = $event"
@@ -144,6 +148,7 @@ const {
           <AiDirectorPanel
             :scene="selectedScene"
             :project-topic="aiPromptTopic"
+            :scene-local-time="selectedSceneLocalTime"
             @update="selectedScene && updateScene(selectedScene.id, $event)"
             @delete="selectedScene && handleDeleteScene(selectedScene.id)"
             @replace-asset="selectedScene && handleRegenerateImage(selectedScene.id)"
@@ -157,6 +162,8 @@ const {
         :scenes="project.scenes"
         :selected-scene-id="selectedSceneId"
         :is-playing="isPlaying"
+        :total-duration="totalDuration"
+        :bgm-category="project.bgmCategory"
         @select-scene="selectedSceneId = $event"
       />
     </template>

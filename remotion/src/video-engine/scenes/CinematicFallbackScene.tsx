@@ -1,88 +1,108 @@
-import React from 'react'
-import { AbsoluteFill, Audio, Img, interpolate, staticFile, useCurrentFrame, useVideoConfig, Video } from 'remotion'
-import { getCameraPreset, getEmotionTint } from '../animations/camera-presets.js'
-import type { SceneComponentProps } from '../registry/types.js'
-
-function resolveSrc(src?: string) {
-  if (!src) return null
-  if (src.startsWith('http://') || src.startsWith('https://')) return src
-  if (src.startsWith('renders/')) return staticFile(src)
-  return staticFile(src)
-}
-
-export const CinematicFallbackScene: React.FC<SceneComponentProps> = ({ scene, durationInFrames }) => {
-  const frame = useCurrentFrame()
-  const { fps } = useVideoConfig()
-
-  const videoSrc = resolveSrc(scene.media?.video)
-  const imageSrc = resolveSrc(scene.media?.image)
-  const audioSrc = resolveSrc(scene.audio?.voiceUrl)
-  const useVideo =
-    (scene.media?.mediaType === 'video' || scene.media?.mediaType === 'both') && videoSrc
-
-  const cameraType = scene.camera?.type ?? 'push_in'
-  const motion = getCameraPreset(cameraType, scene.camera?.speed ?? 0.5)
-  const progress = durationInFrames <= 1 ? 0 : frame / Math.max(durationInFrames - 1, 1)
-
-  const scale = interpolate(progress, [0, 1], [motion.scaleFrom, motion.scaleTo], {
-    extrapolateLeft: 'clamp',
-    extrapolateRight: 'clamp',
-  })
-  const translateX = interpolate(progress, [0, 1], [motion.translateXFrom, motion.translateXTo], {
-    extrapolateLeft: 'clamp',
-    extrapolateRight: 'clamp',
-  })
-  const translateY = interpolate(progress, [0, 1], [motion.translateYFrom, motion.translateYTo], {
-    extrapolateLeft: 'clamp',
-    extrapolateRight: 'clamp',
-  })
-
-  const uiPulse =
-    scene.meta?.sceneType === 'ui_demo'
-      ? 1 + Math.sin((frame / fps) * Math.PI * 2) * 0.008
-      : 1
-
-  return (
-    <AbsoluteFill style={{ backgroundColor: '#05070A', overflow: 'hidden' }}>
-      {audioSrc ? <Audio src={audioSrc} volume={1} /> : null}
-
-      {useVideo ? (
-        <AbsoluteFill style={{ overflow: 'hidden' }}>
-          <Video
-            src={videoSrc}
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              transform: `scale(${scale * uiPulse}) translate(${translateX}px, ${translateY}px)`,
-              transformOrigin: 'center center',
-            }}
-          />
-        </AbsoluteFill>
-      ) : imageSrc ? (
-        <AbsoluteFill style={{ overflow: 'hidden' }}>
-          <Img
-            src={imageSrc}
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              transform: `scale(${scale * uiPulse}) translate(${translateX}px, ${translateY}px)`,
-              transformOrigin: 'center center',
-            }}
-          />
-        </AbsoluteFill>
-      ) : null}
-
-      <AbsoluteFill
-        style={{
-          background: `linear-gradient(180deg, rgba(0,0,0,0.15) 0%, ${getEmotionTint(scene.meta?.emotion)} 45%, rgba(0,0,0,0.72) 100%)`,
-        }}
-      />
-    </AbsoluteFill>
-  )
-}
-
-export function isCinematicFallbackComponent(component: string) {
-  return component === 'CinematicFallback' || component === 'cinematic_still' || component === 'broll_video'
-}
+import React from 'react'
+import { AbsoluteFill, Audio, Img, interpolate, staticFile, useCurrentFrame, useVideoConfig, Video } from 'remotion'
+import { getCameraPreset, getEmotionTint } from '../animations/camera-presets.js'
+import { ChapterOverlay } from '../components/shared/ChapterOverlay.js'
+import type { SceneComponentProps } from '../registry/types.js'
+import { CaptionLayer } from '../subtitles/CaptionLayer.js'
+
+function resolveSrc(src?: string) {
+  if (!src) return null
+  if (src.startsWith('http://') || src.startsWith('https://')) return src
+  if (src.startsWith('renders/')) return staticFile(src)
+  return staticFile(src)
+}
+
+export const CinematicFallbackScene: React.FC<SceneComponentProps> = ({ scene, durationInFrames }) => {
+  const frame = useCurrentFrame()
+  const { fps } = useVideoConfig()
+
+  const videoSrc = resolveSrc(scene.media?.video)
+  const imageSrc = resolveSrc(scene.media?.image)
+  const audioSrc = resolveSrc(scene.audio?.voiceUrl)
+  const useVideo =
+    (scene.media?.mediaType === 'video' || scene.media?.mediaType === 'both') && videoSrc
+
+  const cameraType = scene.camera?.type ?? 'push_in'
+  const motion = getCameraPreset(cameraType, scene.camera?.speed ?? 0.5)
+  const progress = durationInFrames <= 1 ? 0 : frame / Math.max(durationInFrames - 1, 1)
+
+  const scale = interpolate(progress, [0, 1], [motion.scaleFrom, motion.scaleTo], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  })
+  const translateX = interpolate(progress, [0, 1], [motion.translateXFrom, motion.translateXTo], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  })
+  const translateY = interpolate(progress, [0, 1], [motion.translateYFrom, motion.translateYTo], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  })
+
+  const uiPulse =
+    scene.meta?.sceneType === 'ui_demo'
+      ? 1 + Math.sin((frame / fps) * Math.PI * 2) * 0.008
+      : 1
+
+  return (
+    <AbsoluteFill style={{ backgroundColor: '#05070A', overflow: 'hidden' }}>
+      {audioSrc ? <Audio src={audioSrc} volume={1} /> : null}
+
+      {useVideo ? (
+        <AbsoluteFill style={{ overflow: 'hidden' }}>
+          <Video
+            src={videoSrc}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              transform: `scale(${scale * uiPulse}) translate(${translateX}px, ${translateY}px)`,
+              transformOrigin: 'center center',
+            }}
+          />
+        </AbsoluteFill>
+      ) : imageSrc ? (
+        <AbsoluteFill style={{ overflow: 'hidden' }}>
+          <Img
+            src={imageSrc}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              transform: `scale(${scale * uiPulse}) translate(${translateX}px, ${translateY}px)`,
+              transformOrigin: 'center center',
+            }}
+          />
+        </AbsoluteFill>
+      ) : null}
+
+      <AbsoluteFill
+        style={{
+          background: `linear-gradient(180deg, rgba(0,0,0,0.2) 0%, ${getEmotionTint(scene.meta?.emotion)} 45%, rgba(0,0,0,0.78) 100%)`,
+        }}
+      />
+
+      {/* Film vignette */}
+      <AbsoluteFill
+        style={{
+          background:
+            'radial-gradient(ellipse at center, transparent 42%, rgba(0,0,0,0.55) 100%)',
+          pointerEvents: 'none',
+        }}
+      />
+
+      <ChapterOverlay
+        chapterIndex={scene.order}
+        purpose={scene.purpose ?? scene.meta?.storyBeat}
+        title={scene.meta?.viewerTask ?? undefined}
+        durationInFrames={durationInFrames}
+      />
+
+      <CaptionLayer scene={scene} durationInFrames={durationInFrames} />
+    </AbsoluteFill>
+  )
+}
+
+export function isCinematicFallbackComponent(component: string) {
+  return component === 'CinematicFallback' || component === 'cinematic_still' || component === 'broll_video'
+}

@@ -1,6 +1,6 @@
 import React from 'react'
 import type { RenderScene } from '@xueai/shared'
-import { adaptRenderInput } from '../video-engine/adapters/render-input.adapter.js'
+import { adaptRenderInput } from '../video-engine/adapters/render-input.adapter'
 import { SceneRenderer } from '../video-engine/core/SceneRenderer.js'
 
 /** Legacy CinematicScene — delegates to Scene Engine SceneRenderer */

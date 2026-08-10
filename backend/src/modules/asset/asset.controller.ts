@@ -66,8 +66,8 @@ export class AssetController {
 
   remove = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      await assetService.deleteAsset(String(req.params.id))
-      return sendSuccess(res, null, '素材已删除')
+      const data = await assetService.deleteAsset(String(req.params.id))
+      return sendSuccess(res, data, '素材已删除')
     } catch (error) {
       return next(error)
     }

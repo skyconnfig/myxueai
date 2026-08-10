@@ -3,11 +3,13 @@ import { computed } from 'vue'
 import { NSelect } from 'naive-ui'
 import { Image as ImageIcon, Lightbulb, Sparkles, Star, Trash2, Volume2 } from 'lucide-vue-next'
 import { VOICE_EMOTIONS, VOICE_PRESETS, resolveVoiceSettings } from '@xueai/shared'
+import UiStepsReadonlyPanel from '@/components/studio/UiStepsReadonlyPanel.vue'
 import type { DemoScene } from '@/data/mockData'
 
 const props = defineProps<{
   scene?: DemoScene
   projectTopic: string
+  sceneLocalTime?: number | null
 }>()
 
 const emit = defineEmits<{
@@ -206,6 +208,14 @@ const visualScore = computed(() => {
           @input="emit('update', { action: ($event.target as HTMLInputElement).value })"
         />
       </div>
+      <UiStepsReadonlyPanel
+        v-if="scene.componentType === 'ProductDemo' || scene.componentType === 'BrowserWindow' || scene.purpose === 'demo' || scene.purpose === 'solution' || scene.uiStepDetails?.length"
+        :steps="scene.uiStepDetails"
+        :duration="scene.duration"
+        :component-type="scene.componentType"
+        :purpose="scene.purpose"
+        :highlight-at-sec="sceneLocalTime ?? null"
+      />
       <div class="space-y-1.5">
         <label class="text-muted text-[11px] font-mono">AI 画面 Prompt</label>
         <textarea

@@ -12,6 +12,7 @@ import { projectRepository } from '../project/project.repository.js'
 import { renderInputBuilder } from './render-input.builder.js'
 import { renderRepository } from './render.repository.js'
 import { cleanupRenderAssets, stageRenderAssets } from './render-asset-staging.js'
+import { assertRenderInputReady } from './render-validate.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const remotionRoot = path.resolve(__dirname, '../../../../remotion')
@@ -144,6 +145,11 @@ export class RenderService {
     })
 
     const stagedInput = stageRenderAssets(render.id, renderInput)
+    const qcIssues = assertRenderInputReady(stagedInput)
+    const majors = qcIssues.filter((i) => i.severity === 'major')
+    if (majors.length) {
+      console.warn('[render] Pre-render QC warnings:', majors.map((i) => i.message).join('; '))
+    }
     const renderDir = path.join(storagePaths.renders, render.id)
     fs.mkdirSync(renderDir, { recursive: true })
 

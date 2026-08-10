@@ -1,10 +1,10 @@
 import React from 'react'
-import { Audio, interpolate, Sequence, useCurrentFrame, useVideoConfig } from 'remotion'
+import { Audio, interpolate, Sequence, staticFile, useCurrentFrame, useVideoConfig } from 'remotion'
 import type { CompositionAudioConfig } from '@xueai/shared'
 
 function resolveAudioSrc(url: string) {
   if (url.startsWith('http://') || url.startsWith('https://')) return url
-  return url
+  return staticFile(url.startsWith('/') ? url.slice(1) : url)
 }
 
 export interface CompositionAudioProps {

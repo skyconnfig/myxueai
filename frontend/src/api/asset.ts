@@ -25,5 +25,8 @@ export async function uploadAsset(file: File, data: { projectId: string; sceneId
 }
 
 export async function deleteAsset(id: string) {
-  return request<null>({ method: 'DELETE', url: `/assets/${id}` })
+  return request<{ id: string; fileDeleted: boolean; url: string }>({
+    method: 'DELETE',
+    url: `/assets/${id}`,
+  })
 }

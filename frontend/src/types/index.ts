@@ -1,3 +1,5 @@
+import type { UiStep } from '@xueai/shared'
+
 export type VideoRatio = '9:16' | '16:9' | '1:1'
 
 export type ProjectStatus =
@@ -78,6 +80,7 @@ export interface Scene extends CinematicSceneFields {
   purpose?: string | null
   componentType?: string | null
   uiSteps?: number | null
+  uiStepDetails?: UiStep[] | null
   cues?: {
     captionStyle?: { color?: string; fontSize?: number }
     sceneProps?: { steps?: unknown[] }

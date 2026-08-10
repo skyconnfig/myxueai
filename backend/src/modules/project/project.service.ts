@@ -1,3 +1,5 @@
+import type { UiStep } from '@xueai/shared'
+import { normalizeUiSteps } from '@xueai/shared'
 import { AppError } from '../../middleware/error-handler.js'
 import { ProjectStatus } from '../../constants/status.js'
 import { productionService } from '../production/production.service.js'
@@ -27,6 +29,14 @@ function findSceneAudioAsset(
   if (matches.length === 0) return undefined
 
   return matches.find((asset) => !asset.sceneId) ?? matches[matches.length - 1]
+}
+
+function extractUiStepDetails(cues: unknown, duration: number): UiStep[] | null {
+  if (!cues || typeof cues !== 'object') return null
+  const data = cues as { sceneProps?: { steps?: unknown[] }; steps?: unknown[] }
+  const raw = data.sceneProps?.steps ?? data.steps
+  if (!Array.isArray(raw) || raw.length === 0) return null
+  return normalizeUiSteps(raw, duration)
 }
 
 function extractUiSteps(cues: unknown): number | null {
@@ -85,6 +95,7 @@ function toProjectDto(project: NonNullable<Awaited<ReturnType<typeof projectRepo
         purpose: scene.purpose ?? null,
         componentType: scene.componentType ?? null,
         uiSteps: extractUiSteps(scene.cues),
+        uiStepDetails: extractUiStepDetails(scene.cues, scene.duration),
         cues: scene.cues ?? null,
         audioUrl: audioAsset?.url ?? null,
         audioProvider: audioAsset?.provider ?? null,

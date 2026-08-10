@@ -12,7 +12,8 @@
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "e2e:saas-demo": "node scripts/e2e-saas-demo-scene.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.2.1",

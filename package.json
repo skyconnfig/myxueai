@@ -6,9 +6,10 @@
   "scripts": {
     "dev:frontend": "pnpm --filter frontend dev",
     "dev:backend": "pnpm --filter backend dev",
-    "dev:remotion": "pnpm --filter remotion dev",
+    "dev:remotion": "pnpm --filter remotion dev:studio",
     "remotion:browser": "pnpm --filter remotion browser:ensure",
     "remotion:render": "pnpm --filter remotion render:cli",
+    "remotion:studio": "pnpm --filter remotion dev:studio",
     "build": "pnpm -r build",
     "lint": "pnpm -r lint"
   },
