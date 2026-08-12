@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from 'express'
 import { ZodError } from 'zod'
+import { AIProviderError } from '../lib/ai/ai-errors.js'
 import { loggerError } from '../utils/logger.js'
 import { sendError } from '../utils/response.js'
 
@@ -25,6 +26,11 @@ export function errorHandler(
   _next: NextFunction,
 ): Response {
   if (error instanceof AppError) {
+    return sendError(res, error.statusCode, error.code, error.message)
+  }
+
+  if (error instanceof AIProviderError) {
+    loggerError('AI provider error', { code: error.code, message: error.message })
     return sendError(res, error.statusCode, error.code, error.message)
   }
 

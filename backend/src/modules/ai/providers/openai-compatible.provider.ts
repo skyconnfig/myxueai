@@ -1,64 +1,40 @@
-import { config } from '../../../config/index.js'
 import { normalizeUiSteps } from '@xueai/shared'
+import { unifiedAiClient } from '../../../lib/ai/ai-client.js'
+import { aiConfig } from '../../../lib/ai/ai-config.js'
+import { AIProviderError } from '../../../lib/ai/ai-errors.js'
+import { parseJsonObject, validateWithZod } from '../../../lib/ai/ai-json.js'
 import type { DirectorBrief, VideoPlan } from '../../project/project.types.js'
-import { directorBriefSchema } from '../../project/project.types.js'
+import { directorBriefSchema, videoPlanSchema } from '../../project/project.types.js'
 import { buildDirectorPrompt } from '../../director/prompts/director.prompt.js'
 import { buildCinematicScenePrompt } from '../../director/prompts/scene.prompt.js'
 
-interface ChatCompletionResponse {
-  choices?: Array<{
-    message?: {
-      content?: string
-    }
-  }>
-}
-
 export class OpenAICompatibleProvider {
-  private apiKey = config.llm.apiKey
-  private baseUrl = config.llm.baseUrl.replace(/\/$/, '')
-  private model = config.llm.model
-
   get isConfigured() {
-    return Boolean(this.apiKey)
+    return unifiedAiClient.configured
   }
 
-  private async chatJson(prompt: string, temperature: number, system: string) {
-    const response = await fetch(`${this.baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: this.model,
-        messages: [
-          { role: 'system', content: system },
-          { role: 'user', content: prompt },
-        ],
-        temperature,
-        response_format: { type: 'json_object' },
-      }),
-    })
+  get providerName() {
+    return aiConfig.llm.provider
+  }
 
-    if (!response.ok) {
-      const text = await response.text()
-      throw new Error(`LLM request failed (${response.status}): ${text.slice(0, 200)}`)
-    }
+  get model() {
+    return aiConfig.llm.model
+  }
 
-    const payload = (await response.json()) as ChatCompletionResponse
-    const content = payload.choices?.[0]?.message?.content
-    if (!content) {
-      throw new Error('LLM returned empty content')
-    }
-    return content
+  get baseUrl() {
+    return aiConfig.llm.baseUrl
   }
 
   async generateRawJson(prompt: string, system = 'Always respond with valid JSON only.') {
-    if (!this.isConfigured) {
-      throw new Error('LLM_API_KEY is not configured')
-    }
-    const content = await this.chatJson(prompt, 0.4, system)
-    return JSON.parse(content) as unknown
+    const result = await unifiedAiClient.chatCompletion({
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: prompt },
+      ],
+      temperature: 0.4,
+      responseFormat: { type: 'json_object' },
+    })
+    return parseJsonObject(result.content) as unknown
   }
 
   async generateDirectorBrief(input: {
@@ -70,16 +46,20 @@ export class OpenAICompatibleProvider {
     duration?: number
     ratio?: string
   }): Promise<DirectorBrief> {
-    if (!this.isConfigured) {
-      throw new Error('LLM_API_KEY is not configured')
-    }
+    const result = await unifiedAiClient.chatCompletion({
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a commercial video director. Always respond with valid JSON only.',
+        },
+        { role: 'user', content: buildDirectorPrompt(input) },
+      ],
+      temperature: 0.5,
+      responseFormat: { type: 'json_object' },
+    })
 
-    const content = await this.chatJson(
-      buildDirectorPrompt(input),
-      0.5,
-      'You are a commercial video director. Always respond with valid JSON only.',
-    )
-    return parseDirectorBriefJson(content)
+    const data = parseJsonObject(result.content)
+    return validateWithZod(directorBriefSchema, data, 'Director brief')
   }
 
   async generateCinematicScenes(input: {
@@ -88,17 +68,20 @@ export class OpenAICompatibleProvider {
     duration: number
     ratio?: string
   }): Promise<VideoPlan> {
-    if (!this.isConfigured) {
-      throw new Error('LLM_API_KEY is not configured')
-    }
+    const result = await unifiedAiClient.chatCompletion({
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a cinematic commercial storyboard artist. Always respond with valid JSON only.',
+        },
+        { role: 'user', content: buildCinematicScenePrompt(input) },
+      ],
+      temperature: 0.7,
+      responseFormat: { type: 'json_object' },
+    })
 
-    const content = await this.chatJson(
-      buildCinematicScenePrompt(input),
-      0.7,
-      'You are a cinematic commercial storyboard artist. Always respond with valid JSON only.',
-    )
-    const plan = parseCinematicVideoPlanJson(content)
-    return { ...plan, directorBrief: input.brief }
+    const plan = parseCinematicVideoPlanJson(result.content)
+    return validateWithZod(videoPlanSchema, { ...plan, directorBrief: input.brief }, 'Cinematic video plan')
   }
 
   async generateVideoPlan(input: {
@@ -107,10 +90,6 @@ export class OpenAICompatibleProvider {
     duration?: number
     ratio?: string
   }): Promise<VideoPlan> {
-    if (!this.isConfigured) {
-      throw new Error('LLM_API_KEY is not configured')
-    }
-
     const prompt = `你是一个专业的短视频与中视频内容导演。请根据以下要求生成一份完整的视频剧本和分镜。
 
 主题：${input.topic}
@@ -145,35 +124,16 @@ export class OpenAICompatibleProvider {
 - 禁止 visual 与 voice 脱节（例如口播讲团队协作，画面却是电路板）
 - 结尾分镜 visual 必须体现 voice 中的号召动作（注册、下载、关注等）`
 
-    const response = await fetch(`${this.baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: this.model,
-        messages: [
-          { role: 'system', content: 'You are a professional short-form video director. Always respond with valid JSON only.' },
-          { role: 'user', content: prompt },
-        ],
-        temperature: 0.7,
-        response_format: { type: 'json_object' },
-      }),
+    const result = await unifiedAiClient.chatCompletion({
+      messages: [
+        { role: 'system', content: 'You are a professional short-form video director. Always respond with valid JSON only.' },
+        { role: 'user', content: prompt },
+      ],
+      temperature: 0.7,
+      responseFormat: { type: 'json_object' },
     })
 
-    if (!response.ok) {
-      const text = await response.text()
-      throw new Error(`LLM request failed (${response.status}): ${text.slice(0, 200)}`)
-    }
-
-    const payload = (await response.json()) as ChatCompletionResponse
-    const content = payload.choices?.[0]?.message?.content
-    if (!content) {
-      throw new Error('LLM returned empty content')
-    }
-
-    return parseVideoPlanJson(content)
+    return validateWithZod(videoPlanSchema, parseVideoPlanJson(result.content), 'Video plan')
   }
 
   async optimizeVideoPlan(input: {
@@ -191,10 +151,6 @@ export class OpenAICompatibleProvider {
       voice: string
     }>
   }): Promise<{ scenes: VideoPlan['scenes']; summary?: string }> {
-    if (!this.isConfigured) {
-      throw new Error('LLM_API_KEY is not configured')
-    }
-
     const focusHint =
       input.focusSceneIndex != null
         ? `仅优化 index=${input.focusSceneIndex} 的分镜，其余分镜原样返回。`
@@ -244,41 +200,21 @@ ${JSON.stringify({ scenes: input.scenes }, null, 2)}
 - 每个 scene 必须保留或补全 shotType, cameraMotion, lighting, emotion, action 五个电影字段
 - duration 可微调，但总和接近 ${input.duration ?? 60} 秒`
 
-    const response = await fetch(`${this.baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: this.model,
-        messages: [
-          {
-            role: 'system',
-            content:
-              'You are a professional short-form video director. Always respond with valid JSON only.',
-          },
-          { role: 'user', content: prompt },
-        ],
-        temperature: 0.6,
-        response_format: { type: 'json_object' },
-      }),
+    const result = await unifiedAiClient.chatCompletion({
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a professional short-form video director. Always respond with valid JSON only.',
+        },
+        { role: 'user', content: prompt },
+      ],
+      temperature: 0.6,
+      responseFormat: { type: 'json_object' },
     })
 
-    if (!response.ok) {
-      const text = await response.text()
-      throw new Error(`LLM request failed (${response.status}): ${text.slice(0, 200)}`)
-    }
-
-    const payload = (await response.json()) as ChatCompletionResponse
-    const content = payload.choices?.[0]?.message?.content
-    if (!content) {
-      throw new Error('LLM returned empty content')
-    }
-
-    const parsed = parseOptimizeJson(content)
+    const parsed = parseOptimizeJson(result.content)
     if (parsed.scenes.length !== input.scenes.length) {
-      throw new Error('LLM returned mismatched scene count')
+      throw new AIProviderError('INVALID_JSON', 'LLM returned mismatched scene count', { statusCode: 502 })
     }
 
     return parsed
@@ -303,12 +239,11 @@ ${JSON.stringify({ scenes: input.scenes }, null, 2)}
       lighting?: string
       emotion?: string
       action?: string
+      negativePrompt?: string
+      transition?: string
+      sceneType?: string
     }>
   }): Promise<{ scenes: VideoPlan['scenes']; summary?: string }> {
-    if (!this.isConfigured) {
-      throw new Error('LLM_API_KEY is not configured')
-    }
-
     const prompt = `你是商业视频视觉导演。请将以下分镜的整体视觉风格切换为「${input.styleLabel}」，口播 voice 必须保持不变，只改 visual、lighting、cameraMotion、emotion、action、negativePrompt。
 
 视频主题：${input.topic}
@@ -331,40 +266,21 @@ ${JSON.stringify({ scenes: input.scenes }, null, 2)}
 - visual 必须体现新商业风格，像真实拍摄镜头
 - scenes 数量与 index 顺序不变`
 
-    const response = await fetch(`${this.baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: this.model,
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a commercial video visual director. Always respond with valid JSON only.',
-          },
-          { role: 'user', content: prompt },
-        ],
-        temperature: 0.65,
-        response_format: { type: 'json_object' },
-      }),
+    const result = await unifiedAiClient.chatCompletion({
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a commercial video visual director. Always respond with valid JSON only.',
+        },
+        { role: 'user', content: prompt },
+      ],
+      temperature: 0.65,
+      responseFormat: { type: 'json_object' },
     })
 
-    if (!response.ok) {
-      const text = await response.text()
-      throw new Error(`LLM request failed (${response.status}): ${text.slice(0, 200)}`)
-    }
-
-    const payload = (await response.json()) as ChatCompletionResponse
-    const content = payload.choices?.[0]?.message?.content
-    if (!content) {
-      throw new Error('LLM returned empty content')
-    }
-
-    const parsed = parseOptimizeJson(content)
+    const parsed = parseOptimizeJson(result.content)
     if (parsed.scenes.length !== input.scenes.length) {
-      throw new Error('LLM returned mismatched scene count')
+      throw new AIProviderError('INVALID_JSON', 'LLM returned mismatched scene count', { statusCode: 502 })
     }
 
     return {
@@ -375,15 +291,6 @@ ${JSON.stringify({ scenes: input.scenes }, null, 2)}
       })),
     }
   }
-}
-
-function parseDirectorBriefJson(raw: string): DirectorBrief {
-  const data = parseJsonObject(raw)
-  const parsed = directorBriefSchema.safeParse(data)
-  if (!parsed.success) {
-    throw new Error('LLM returned invalid director brief structure')
-  }
-  return parsed.data
 }
 
 function parseCinematicVideoPlanJson(raw: string): VideoPlan {
@@ -427,16 +334,6 @@ function parseCinematicVideoPlanJson(raw: string): VideoPlan {
     duration,
     style: data.style ? String(data.style) : undefined,
     scenes: scenes.filter((scene) => scene.description || scene.voice),
-  }
-}
-
-function parseJsonObject(raw: string): Record<string, unknown> {
-  try {
-    return JSON.parse(raw) as Record<string, unknown>
-  } catch {
-    const match = raw.match(/\{[\s\S]*\}/)
-    if (!match) throw new Error('Failed to parse LLM JSON response')
-    return JSON.parse(match[0]) as Record<string, unknown>
   }
 }
 

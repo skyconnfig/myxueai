@@ -339,7 +339,7 @@ export class ScriptService {
 
     } else {
 
-      notice = 'LLM_API_KEY 未配置，已使用商业片预设分镜模板'
+      notice = 'OPENAI_API_KEY / LLM_API_KEY 未配置，已使用商业片预设分镜模板'
 
       plan = normalizePlan(generatePresetCinematicPlan({ topic, style, videoStyle, audience, goal, duration }), duration)
 
@@ -577,7 +577,7 @@ export class ScriptService {
 
     } else {
 
-      notice = 'LLM_API_KEY 未配置，已使用本地规则优化'
+      notice = 'OPENAI_API_KEY / LLM_API_KEY 未配置，已使用本地规则优化'
 
       optimizedScenes = optimizePresetScenes(currentScenes, focusScene?.order)
 
@@ -781,7 +781,7 @@ export class ScriptService {
         summary = `已使用预设规则切换为 ${styleLabel}`
       }
     } else {
-      notice = 'LLM_API_KEY 未配置，已使用预设风格规则'
+      notice = 'OPENAI_API_KEY / LLM_API_KEY 未配置，已使用预设风格规则'
       summary = `已切换为 ${styleLabel}`
     }
 

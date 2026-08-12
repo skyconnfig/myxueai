@@ -18,7 +18,7 @@
 | 后端 | Node.js + Express + TypeScript + Prisma |
 | 数据库 | SQLite |
 | 视频 | Remotion 4.x + Chromium |
-| AI | api.xueai.me 网关（LLM / 配图 / speech-2.8-hd TTS） |
+| AI | DeepSeek V4 Flash（LLM）+ xueai 网关（配图 / TTS） |
 | 存储 | 本地 `storage/` |
 
 ## 项目结构
@@ -36,7 +36,7 @@ xueai-video-factory/
 
 ## 开发进度
 
-> 最后更新：2026-08-10（Plan Studio 配音 / 多音色 / 全屏预览）
+> 最后更新：2026-08-12（DeepSeek V4 Flash 统一 LLM Provider）
 
 ### 阶段总览
 
@@ -52,6 +52,7 @@ xueai-video-factory/
 | 8 | xueai 网关 TTS（speech-2.8-hd） | ✅ 完成 |
 | 9 | Plan Studio 增强（配音预览 / 多音色 / 全屏 / AI 优化） | ✅ 完成 |
 | 10 | 任务中心 + Dashboard 真实统计 + 项目删除 | ✅ 完成 |
+| 11 | DeepSeek V4 Flash 统一 LLM Provider | ✅ 完成 |
 
 ### 前端页面
 
@@ -87,6 +88,8 @@ xueai-video-factory/
 | Project | `/api/projects` | ✅ CRUD + 删除（自动停止流水线） |
 | AI Script | `/api/ai/script` | ✅ LLM 生成 VideoPlan |
 | AI Optimize | `/api/ai/optimize` | ✅ 分镜口播 / 画面优化 |
+| AI Health | `/api/ai/health` | ✅ DeepSeek 配置状态（不含 Key） |
+| AI Test | `/api/ai/test` | ✅ 连通性测试 |
 | Scene | `/api/scenes` | ✅ 分镜 CRUD（含 voiceId / voiceEmotion） |
 | Task | `/api/tasks` | ✅ 创建 / 停止 / 删除 |
 | Production | `/api/projects/:id/production` | ✅ 6 步流水线 + 重新配音 |
@@ -120,15 +123,38 @@ V1 升级要点：
 
 ### AI 生产说明
 
-生产流水线在配置了 API Key 时使用真实服务，否则自动降级为占位素材。默认网关：`https://api.xueai.me/v1`
+LLM 文本生成统一走 **DeepSeek V4 Flash**（OpenAI 兼容接口）；配图与 TTS 保持独立配置。未配置 API Key 时自动降级为预设模板 / 占位素材。
 
 | 步骤 | 服务 | 环境变量 | 备注 |
 |------|------|----------|------|
-| 脚本 | OpenAI 兼容 LLM | `LLM_API_KEY` | 如 gpt-4o-mini |
-| 分镜配图 | z-image-turbo / dall-e-3 | `OPENAI_API_KEY` | 网关兼容 OpenAI Images API |
-| 配音 | speech-2.8-hd（Minimax 异步） | `LLM_API_KEY` 或 `TTS_API_KEY` | 约 25s/句，8 种中文音色 + 5 种情绪 |
+| 脚本 / 导演 / 分镜 | DeepSeek V4 Flash | `OPENAI_API_KEY` | 默认 `deepseek-v4-flash`，Base URL `https://api.deepseek.com` |
+| 脚本（兼容） | 同上 | `LLM_API_KEY` | 仅当 `OPENAI_API_KEY` 为空时作为 fallback |
+| 分镜配图 | z-image-turbo / dall-e-3 | `OPENAI_IMAGE_API_KEY` 或 `OPENAI_API_KEY` | 网关兼容 OpenAI Images API |
+| 配音 | speech-2.8-hd（Minimax 异步） | `TTS_API_KEY` | 约 25s/句，8 种中文音色 + 5 种情绪 |
 | 配音（快） | tts-1 / gpt-4o-mini-tts | `TTS_MODEL=tts-1` | 同步，秒级返回 |
 | 配音（可选） | ElevenLabs | `ELEVENLABS_API_KEY` | 优先级高于网关 |
+
+**LLM 统一架构：**
+
+```
+AI Provider (backend/src/lib/ai/)
+    ↓
+OpenAI Compatible Client
+    ↓
+DeepSeek V4 Flash
+    ↓
+VideoPlan / Director Brief / Storyboard JSON
+    ↓
+Scene Engine → Remotion → MP4
+```
+
+**健康检查：**
+
+```bash
+GET  /api/health
+GET  /api/ai/health    # provider / model / configured
+POST /api/ai/test      # 发送测试消息验证 DeepSeek 连通性
+```
 
 ### 待开发（P2）
 
@@ -158,7 +184,10 @@ pnpm install
 
 # 配置环境变量
 cp backend/.env.example backend/.env
-# 编辑 backend/.env：LLM_API_KEY + LLM_BASE_URL=https://api.xueai.me/v1
+# 编辑 backend/.env：填入 DeepSeek API Key
+# OPENAI_API_KEY=sk-your-deepseek-key
+# OPENAI_BASE_URL=https://api.deepseek.com
+# OPENAI_MODEL=deepseek-v4-flash
 
 # 初始化数据库
 cd backend
@@ -175,7 +204,13 @@ pnpm dev:backend    # http://localhost:3000
 pnpm dev:frontend   # http://localhost:5173
 ```
 
-验证 API：`GET http://localhost:3000/api/health`
+验证 API：
+
+```bash
+curl http://localhost:3000/api/health
+curl http://localhost:3000/api/ai/health
+curl -X POST http://localhost:3000/api/ai/test
+```
 
 Demo 账号：`demo@xueai.local` / `demo123456`
 
@@ -209,8 +244,8 @@ Demo 账号：`demo@xueai.local` / `demo123456`
                     └───────────────────────────────────────┘
                                         │
                     ┌───────────────────▼───────────────────┐
-                    │ 外部 AI 网关 api.xueai.me              │
-                    │  LLM / 配图 / TTS                      │
+                    │ 外部 AI 服务                              │
+                    │  DeepSeek（LLM）/ xueai 网关（配图/TTS）  │
                     └───────────────────────────────────────┘
 ```
 
@@ -322,15 +357,24 @@ STORAGE_PATH="../storage"
 # 前端域名（CORS）
 CORS_ORIGIN=https://your-domain.com
 
-# AI 网关（必填）
-LLM_API_KEY=sk-your-key
-LLM_BASE_URL=https://api.xueai.me/v1
-LLM_MODEL=gpt-4o-mini
+# AI — LLM（DeepSeek V4 Flash，必填）
+OPENAI_API_KEY=sk-your-deepseek-key
+OPENAI_BASE_URL=https://api.deepseek.com
+OPENAI_MODEL=deepseek-v4-flash
 
-OPENAI_API_KEY=sk-your-key
-OPENAI_BASE_URL=https://api.xueai.me/v1
+# Legacy fallback（仅 OPENAI_API_KEY 为空时使用）
+LLM_API_KEY=
+LLM_BASE_URL=
+LLM_MODEL=
+
+# 配图（可与 LLM 分离）
+OPENAI_IMAGE_API_KEY=
+OPENAI_IMAGE_BASE_URL=
 OPENAI_IMAGE_MODEL=z-image-turbo
 
+# TTS（xueai 网关）
+TTS_API_KEY=
+TTS_BASE_URL=https://api.xueai.me/v1
 TTS_MODEL=speech-2.8-hd
 TTS_VOICE=Chinese (Mandarin)_Lyrical_Voice
 
@@ -581,11 +625,13 @@ chmod -R 755 /var/www/xueai/storage
 | `DATABASE_URL` | 是 | SQLite 路径，如 `file:./prisma/prod.db` |
 | `STORAGE_PATH` | 否 | 存储根目录，默认 `../storage` |
 | `CORS_ORIGIN` | 是 | 前端域名，如 `https://your-domain.com` |
-| `LLM_API_KEY` | 是 | AI 脚本 / TTS 网关密钥 |
-| `LLM_BASE_URL` | 否 | 默认 `https://api.xueai.me/v1` |
-| `LLM_MODEL` | 否 | 脚本模型 |
-| `OPENAI_API_KEY` | 是* | 配图密钥（可与 LLM 相同） |
+| `OPENAI_API_KEY` | 是 | DeepSeek LLM 密钥（脚本 / 导演 / 分镜） |
+| `OPENAI_BASE_URL` | 否 | 默认 `https://api.deepseek.com` |
+| `OPENAI_MODEL` | 否 | 默认 `deepseek-v4-flash` |
+| `LLM_API_KEY` | 否 | Legacy fallback，仅 `OPENAI_API_KEY` 为空时使用 |
+| `OPENAI_IMAGE_API_KEY` | 是* | 配图密钥（可与 LLM 相同） |
 | `OPENAI_IMAGE_MODEL` | 否 | 推荐 `z-image-turbo` |
+| `TTS_API_KEY` | 是* | TTS 网关密钥 |
 | `TTS_MODEL` | 否 | 默认 `speech-2.8-hd` |
 | `JWT_SECRET` | 是 | 生产环境必须改为强随机值 |
 | `REMOTION_PUBLIC_URL` | 是 | 公网访问地址，渲染资源 URL 用 |
@@ -616,8 +662,9 @@ chmod -R 755 /var/www/xueai/storage
 
 **4. 配音/配图返回占位内容**
 
-- 检查 `LLM_API_KEY` / `OPENAI_API_KEY` 是否配置
-- 确认服务器能访问 `https://api.xueai.me`
+- 检查 `OPENAI_API_KEY`（LLM）/ `OPENAI_IMAGE_API_KEY`（配图）/ `TTS_API_KEY`（配音）是否配置
+- LLM 未配置时会自动使用预设分镜模板（`source: preset`）
+- 确认服务器能访问 `https://api.deepseek.com`（LLM）和 `https://api.xueai.me`（配图/TTS）
 
 **5. Windows 开发环境 `pnpm dev:backend` 失败**
 
@@ -632,12 +679,16 @@ chmod -R 755 /var/www/xueai/storage
 
 | 变量 | 说明 |
 |------|------|
-| `LLM_API_KEY` | LLM / TTS 网关密钥（必填） |
-| `LLM_BASE_URL` | 网关地址，默认 `https://api.xueai.me/v1` |
-| `LLM_MODEL` | 脚本模型，如 `gpt-4o-mini` |
-| `OPENAI_API_KEY` | 配图密钥（可与 LLM 相同） |
-| `OPENAI_BASE_URL` | 配图网关地址 |
+| `OPENAI_API_KEY` | DeepSeek LLM 密钥（必填） |
+| `OPENAI_BASE_URL` | LLM 地址，默认 `https://api.deepseek.com` |
+| `OPENAI_MODEL` | LLM 模型，默认 `deepseek-v4-flash` |
+| `LLM_API_KEY` | Legacy fallback（`OPENAI_API_KEY` 为空时使用） |
+| `LLM_BASE_URL` | Legacy fallback Base URL |
+| `LLM_MODEL` | Legacy fallback 模型名 |
+| `OPENAI_IMAGE_API_KEY` | 配图密钥（可与 LLM 相同） |
+| `OPENAI_IMAGE_BASE_URL` | 配图网关地址 |
 | `OPENAI_IMAGE_MODEL` | 图片模型，推荐 `z-image-turbo` |
+| `TTS_API_KEY` | TTS 网关密钥 |
 | `TTS_MODEL` | 配音模型，默认 `speech-2.8-hd` |
 | `TTS_VOICE` | Minimax 音色，如 `Chinese (Mandarin)_Lyrical_Voice` |
 | `TTS_LANGUAGE_BOOST` | 语言增强，默认 `Chinese` |

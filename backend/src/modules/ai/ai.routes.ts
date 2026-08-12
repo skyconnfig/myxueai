@@ -9,6 +9,8 @@ const router = Router()
 
 
 
+router.get('/health', aiController.health)
+router.post('/test', aiController.test)
 router.post('/script', ...aiController.generateScript)
 router.post('/optimize', ...aiController.optimizeScript)
 router.post('/change-style', ...aiController.changeStyle)

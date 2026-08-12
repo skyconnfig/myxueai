@@ -1,6 +1,7 @@
 import 'dotenv/config'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { aiConfig } from '../lib/ai/ai-config.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const backendRoot = path.resolve(__dirname, '../..')
@@ -21,9 +22,10 @@ export const config = {
   corsOrigin: process.env.CORS_ORIGIN ?? 'http://localhost:5173',
   storagePath: path.resolve(backendRoot, process.env.STORAGE_PATH ?? '../storage'),
   llm: {
-    apiKey: process.env.LLM_API_KEY ?? '',
-    baseUrl: process.env.LLM_BASE_URL ?? 'https://api.deepseek.com/v1',
-    model: process.env.LLM_MODEL ?? 'deepseek-chat',
+    apiKey: aiConfig.llm.apiKey,
+    baseUrl: aiConfig.llm.baseUrl,
+    model: aiConfig.llm.model,
+    provider: aiConfig.llm.provider,
   },
   workspace: {
     defaultCredits: Number(process.env.WORKSPACE_CREDITS ?? 12560),
@@ -31,12 +33,12 @@ export const config = {
     scriptOptimizationCost: Number(process.env.SCRIPT_OPTIMIZATION_COST ?? 80),
     productionCost: Number(process.env.PRODUCTION_COST ?? 280),
   },
-  openaiApiKey: process.env.OPENAI_API_KEY ?? '',
+  openaiApiKey: aiConfig.llm.apiKey,
   replicateApiToken: process.env.REPLICATE_API_TOKEN ?? '',
   image: {
-    apiKey: process.env.OPENAI_API_KEY ?? '',
-    baseUrl: process.env.OPENAI_BASE_URL ?? 'https://api.openai.com/v1',
-    model: process.env.OPENAI_IMAGE_MODEL ?? 'dall-e-3',
+    apiKey: aiConfig.image.apiKey,
+    baseUrl: aiConfig.image.baseUrl,
+    model: aiConfig.image.model,
   },
   elevenLabs: {
     apiKey: process.env.ELEVENLABS_API_KEY ?? '',
