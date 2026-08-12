@@ -82,6 +82,7 @@ export class ProjectRepository {
       negativePrompt?: string | null
       transition?: string | null
       sceneType?: string | null
+      bgmIntensity?: string | null
       purpose?: string | null
       componentType?: string | null
       viewerTask?: string | null
@@ -92,6 +93,7 @@ export class ProjectRepository {
       soundEffect?: string | null
       assetRequirement?: unknown
       assetSource?: string | null
+      cues?: unknown
     }>,
   ) {
     return prisma.$transaction(async (tx) => {
@@ -118,6 +120,7 @@ export class ProjectRepository {
             negativePrompt: scene.negativePrompt,
             transition: scene.transition ?? (index === 0 ? 'cut' : 'crossfade'),
             sceneType: scene.sceneType ?? 'live_action',
+            bgmIntensity: scene.bgmIntensity,
             purpose: scene.purpose,
             componentType: scene.componentType,
             viewerTask: scene.viewerTask,
@@ -128,6 +131,7 @@ export class ProjectRepository {
             soundEffect: scene.soundEffect,
             assetRequirement: scene.assetRequirement as Prisma.InputJsonValue | undefined,
             assetSource: scene.assetSource,
+            cues: scene.cues as Prisma.InputJsonValue | undefined,
           })),
         })
       }

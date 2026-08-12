@@ -21,6 +21,7 @@ export const generateScriptSchema = z.object({
   audience: z.string().optional(),
   goal: z.string().optional(),
   videoStyle: z.string().optional(),
+  skipCredits: z.boolean().optional(),
 })
 
 export const optimizeScriptSchema = z.object({
@@ -81,6 +82,7 @@ export const cinematicSceneFieldsSchema = z.object({
   negativePrompt: z.string().optional(),
   transition: z.string().optional(),
   sceneType: z.string().optional(),
+  bgmIntensity: z.string().optional(),
 })
 
 export const uiStepSchema = z.object({

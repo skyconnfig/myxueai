@@ -70,6 +70,15 @@ class WsHub {
   broadcastProductionUpdate(projectId: string, data: unknown) {
     this.broadcast(projectId, WsEvents.PRODUCTION_UPDATE, data)
   }
+
+  broadcastProductionEvent(projectId: string, type: string, payload: Record<string, unknown>) {
+    this.broadcast(projectId, WsEvents.PRODUCTION_EVENT, {
+      type,
+      projectId,
+      timestamp: new Date().toISOString(),
+      ...payload,
+    })
+  }
 }
 
 export const wsHub = new WsHub()

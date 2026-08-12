@@ -1,0 +1,32 @@
+{
+  "name": "资讯播报 60秒",
+  "slug": "news",
+  "composition": "VideoComposition",
+  "duration": 60,
+  "ratio": "16:9",
+  "fps": 30,
+  "meta": { "id": "news", "title": "资讯播报", "templateSlug": "news", "version": 1 },
+  "style": {
+    "accentColor": "#EF4444",
+    "captionColor": "#FFFFFF",
+    "captionFont": "'PingFang SC', 'Inter', sans-serif",
+    "captionFontSize": 34,
+    "captionWeight": 700,
+    "backgroundColor": "#0C0C0C",
+    "bgmCategory": "tech_pulse",
+    "bgmVolume": 0.16,
+    "visualStyle": "news documentary, real press conference, natural lighting, photojournalistic, authentic",
+    "defaultTransition": "cut",
+    "cameraFamily": "static",
+    "subtitleStyle": "clean",
+    "emphasizeNumbers": true
+  },
+  "sceneBlueprint": [
+    { "order": 1, "purpose": "hook", "component": "cinematic_still", "durationRatio": 0.1, "camera": { "shotType": "medium", "type": "static", "speed": 0.3 }, "transition": "cut", "bgmIntensity": "medium", "voiceHint": "头条速递" },
+    { "order": 2, "purpose": "context", "component": "cinematic_still", "durationRatio": 0.18, "camera": { "shotType": "wide", "type": "static", "speed": 0.3 }, "transition": "cut", "bgmIntensity": "low", "voiceHint": "事件背景" },
+    { "order": 3, "purpose": "problem", "component": "broll_video", "durationRatio": 0.2, "camera": { "shotType": "medium", "type": "pan_right", "speed": 0.4 }, "transition": "cut", "bgmIntensity": "low", "voiceHint": "影响范围" },
+    { "order": 4, "purpose": "insight", "component": "cinematic_still", "durationRatio": 0.22, "camera": { "shotType": "close_up", "type": "static", "speed": 0.3 }, "transition": "cut", "bgmIntensity": "medium", "voiceHint": "关键数据" },
+    { "order": 5, "purpose": "solution", "component": "cinematic_still", "durationRatio": 0.18, "camera": { "shotType": "medium", "type": "static", "speed": 0.3 }, "transition": "cut", "bgmIntensity": "medium", "voiceHint": "各方回应" },
+    { "order": 6, "purpose": "cta", "component": "CTA", "durationRatio": 0.12, "camera": { "shotType": "medium", "type": "static", "speed": 0.3 }, "transition": "fade", "bgmIntensity": "swell", "voiceHint": "关注追踪" }
+  ]
+}

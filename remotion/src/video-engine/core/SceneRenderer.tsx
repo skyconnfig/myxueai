@@ -10,6 +10,7 @@ import {
 import { resolveSceneComponentOrFallback } from '../registry/scene-registry.js'
 import { SceneAudio } from '../audio/SceneAudio.js'
 import { CaptionLayer } from '../subtitles/CaptionLayer.js'
+import { SubtitleTrack } from '../subtitles/SubtitleTrack.js'
 import type { VideoCompositionJSON } from '@xueai/shared'
 
 export interface SceneRendererProps {
@@ -42,6 +43,10 @@ export const SceneRenderer: React.FC<SceneRendererProps> = ({
     Boolean(enrichedScene.caption?.text) &&
     !commercialComponents.has(String(enrichedScene.component)) &&
     !isCinematicFallbackComponent(String(enrichedScene.component))
+  // Cue-based subtitle track takes precedence over the static caption layer
+  // whenever the Subtitle Engine produced timed cues for this scene.
+  const hasSubtitleCues = Array.isArray(enrichedScene.props?.subtitleCues)
+    && (enrichedScene.props?.subtitleCues as unknown[]).length > 0
 
   const content = (
     <AbsoluteFill style={{ backgroundColor: '#05070A', overflow: 'hidden' }}>
@@ -53,7 +58,9 @@ export const SceneRenderer: React.FC<SceneRendererProps> = ({
       ) : (
         <Component scene={enrichedScene} durationInFrames={durationInFrames} />
       )}
-      {showCaption ? (
+      {hasSubtitleCues ? (
+        <SubtitleTrack scene={enrichedScene} />
+      ) : showCaption ? (
         <CaptionLayer scene={enrichedScene} durationInFrames={durationInFrames} />
       ) : null}
     </AbsoluteFill>

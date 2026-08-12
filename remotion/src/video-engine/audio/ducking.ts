@@ -23,3 +23,40 @@ export function buildVoiceWindowsFromComposition(
     .filter((entry) => entry.hasVoice)
     .map((entry) => ({ from: entry.fromFrame, to: entry.toFrame }))
 }
+
+export interface DuckingSegment {
+  from: number
+  to: number
+  hasVoice: boolean
+  bgmIntensity?: string
+}
+
+/** Build per-scene ducking segments carrying BGM intensity for smooth ducking. */
+export function buildDuckingPlan(
+  timeline: Array<{ fromFrame: number; toFrame: number; hasVoice: boolean; bgmIntensity?: string }>,
+): DuckingSegment[] {
+  return timeline.map((entry) => ({
+    from: entry.fromFrame,
+    to: entry.toFrame,
+    hasVoice: entry.hasVoice,
+    bgmIntensity: entry.bgmIntensity,
+  }))
+}
+
+/** Target BGM multiplier for a given intensity when voice is present. */
+export function intensityDuckMultiplier(intensity?: string): number {
+  switch (intensity) {
+    case 'silent':
+      return 0.0
+    case 'low':
+      return 0.25
+    case 'medium':
+      return 0.4
+    case 'high':
+      return 0.55
+    case 'swell':
+      return 0.6
+    default:
+      return 0.35
+  }
+}

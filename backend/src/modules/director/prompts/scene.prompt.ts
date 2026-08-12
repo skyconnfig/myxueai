@@ -51,25 +51,29 @@ ${JSON.stringify(input.brief, null, 2)}
       "title": "具体镜头名（非抽象钩子）",
       "description": "中文镜头概述",
       "shotType": "close_up",
-      "cameraMotion": "slow_dolly_in",
+      "cameraMotion": "dolly_in",
       "lighting": "dim office, warm desk lamp, soft shadows",
       "emotion": "stress",
       "action": "person typing on laptop, rubbing temples",
       "visual": "English cinematic commercial prompt: real people, natural motion, premium",
       "voice": "口语化旁白，15-35字",
       "negativePrompt": "floating UI card, 3d render, cartoon",
-      "transition": "crossfade",
+      "transition": "cut",
+      "bgmIntensity": "medium",
       "sceneType": "live_action"
     }
   ]
 }
 
-每个 scene 必须包含以下 5 个电影字段：
-1. shotType: close_up | medium | wide | tracking | drone | over_shoulder
-2. cameraMotion: slow_dolly_in | slow_dolly_out | pan_left | pan_right | orbit | handheld | static | push_in | zoom_out
+每个 scene 必须包含以下电影字段：
+1. shotType: close_up | medium | wide | over_shoulder | top_down | pov | macro | low_angle | high_angle | tracking | drone
+2. cameraMotion: static | zoom_in | zoom_out | pan_left | pan_right | pan_up | pan_down | dolly_in | dolly_out | parallax | handheld
 3. lighting: 具体光影描述（禁止仅写「科技感」）
-4. emotion: stress | confidence | success | relief | urgency | calm
+4. emotion: stress | confidence | success | relief | urgency | calm | curiosity
 5. action: 人物/物体具体动作
+6. transition: cut | fade | slide | zoom | wipe | iris | morph（大多数镜头用 cut，只有真正需要时才用动画转场）
+7. bgmIntensity: silent | low | medium | high | swell（hook/cta 偏 high/swell，铺垫镜头偏 low）
+8. negativePrompt: 禁止出现的画面元素
 
 ${UI_STEP_SCHEMA}
 
@@ -81,5 +85,6 @@ ${UI_STEP_SCHEMA}
 - 禁止：UI 卡片截图、白色矩形框、抽象「科技感」描述
 - ui_demo 类型镜头：描述 laptop screen with dashboard, hands on keyboard，禁止 isolated UI card
 - duration 字段为所有 scenes.duration 之和
-- 第一个镜头 transition 为 cut，其余默认 crossfade`
+- 第一个镜头 transition 为 cut，其余默认 cut；只有真正需要视觉变化时才使用 slide/zoom/wipe/iris/morph
+- 不要所有镜头都用 Ken Burns 式缓慢推拉，根据镜头类型选择 cameraMotion：特写用 dolly_in，全景用 pan，静态用 static`
 }

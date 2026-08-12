@@ -6,6 +6,8 @@ import {
   buildDefaultDashboardProps,
   buildDefaultFeatureRevealProps,
   buildDefaultProductDemoSteps,
+  computeRhythmIntent,
+  generateSubtitleCues,
   normalizeCameraType,
   normalizeComponentName,
 } from '@xueai/shared'
@@ -44,6 +46,12 @@ function loadTemplateBlueprint(slug: string): CompositionTemplateJSON | null {
   } catch {
     return null
   }
+}
+
+/** Extract number/percentage tokens from narration for subtitle emphasis. */
+function extractNumbers(text: string): string[] | undefined {
+  const matches = text.match(/\d+(\.\d+)?%?|[一二三四五六七八九十百千万亿]+/g)
+  return matches && matches.length ? matches : undefined
 }
 
 function blueprintDuration(
@@ -186,8 +194,14 @@ export class CompositionBuilder {
           : fallbackDuration
 
       const blueprintEntry = templateBlueprint?.sceneBlueprint.find((b) => b.order === scene.order)
+      const templateStyle = templateBlueprint?.style
+      // Default to CUT — hard cuts feel cinematic; animated transitions are reserved for
+      // moments the director explicitly marks. Template style may override the default.
       const resolvedTransition =
-        scene.transition ?? blueprintEntry?.transition ?? (scene.order === 1 ? 'cut' : 'crossfade')
+        scene.transition ??
+        blueprintEntry?.transition ??
+        templateStyle?.defaultTransition ??
+        (scene.order === 1 ? 'cut' : 'cut')
       if (scene.order > 1 && resolvedTransition === 'push' && sfxWhooshUrl) {
         soundEffects.push({
           url: sfxWhooshUrl,
@@ -224,7 +238,23 @@ export class CompositionBuilder {
         voiceText: scene.voiceText,
       })
 
+      // Subtitle Engine — TTS-synced cues from narration, distributed by char count
+      const narrationText = scene.voiceText ?? scene.description ?? ''
+      const subtitleCues = generateSubtitleCues(narrationText, duration)
+      const propsWithSubtitles = subtitleCues.length
+        ? { ...(props ?? {}), subtitleCues }
+        : props
+
       const sceneSfxUrl = scene.soundEffect ? resolveSfxUrl(scene.soundEffect) : null
+      // Rhythm Engine — derive bgmIntensity from beat/emotion/duration when the
+      // director didn't set one explicitly (blueprint per-scene override → rhythm).
+      const rhythm = computeRhythmIntent({
+        storyBeat: scene.storyBeat ?? resolvedPurpose,
+        emotion: scene.emotion,
+        durationSec: duration,
+      })
+      const bgmIntensity =
+        scene.bgmIntensity ?? blueprintEntry?.bgmIntensity ?? rhythm.bgmIntensity
 
       const built: VideoScene = {
         id: scene.id,
@@ -243,9 +273,14 @@ export class CompositionBuilder {
         caption: {
           text: scene.voiceText ?? scene.description,
           style: {
-            color: cues?.captionStyle?.color ?? '#ffffff',
-            fontSize: cues?.captionStyle?.fontSize ?? 38,
+            color: cues?.captionStyle?.color ?? templateStyle?.captionColor ?? '#ffffff',
+            fontSize: cues?.captionStyle?.fontSize ?? templateStyle?.captionFontSize ?? 38,
+            font: templateStyle?.captionFont,
+            highlightColor: templateStyle?.accentColor,
+            fontWeight: templateStyle?.captionWeight,
           },
+          highlightWords: scene.voiceText ? extractNumbers(scene.voiceText) : undefined,
+          emphasizeNumbers: templateStyle?.emphasizeNumbers,
         },
         audio: audioAsset?.url
           ? {
@@ -253,11 +288,12 @@ export class CompositionBuilder {
               sfx: sceneSfxUrl
                 ? [{ url: sceneSfxUrl, atSec: 0, volume: 0.45, label: scene.soundEffect ?? undefined }]
                 : undefined,
+              bgmIntensity,
             }
           : sceneSfxUrl
-            ? { sfx: [{ url: sceneSfxUrl, atSec: 0, volume: 0.45, label: scene.soundEffect ?? undefined }] }
-            : undefined,
-        props,
+            ? { sfx: [{ url: sceneSfxUrl, atSec: 0, volume: 0.45, label: scene.soundEffect ?? undefined }], bgmIntensity }
+            : { bgmIntensity },
+        props: propsWithSubtitles,
         media: {
           image: imageUrl ? resolveAssetUrl(imageUrl) : undefined,
           video: videoUrl ? resolveAssetUrl(videoUrl) : undefined,
@@ -307,7 +343,7 @@ export class CompositionBuilder {
       scenes,
       audio: {
         backgroundMusic: musicAsset?.url
-          ? { url: resolveAssetUrl(musicAsset.url), volume: project.bgmVolume ?? 0.22 }
+          ? { url: resolveAssetUrl(musicAsset.url), volume: project.bgmVolume ?? templateBlueprint?.style?.bgmVolume ?? 0.22 }
           : undefined,
         soundEffects: soundEffects.length ? soundEffects : undefined,
       },

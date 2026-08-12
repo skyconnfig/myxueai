@@ -5,6 +5,7 @@ import { connectDatabase, disconnectDatabase } from './config/database.js'
 import { ensureStorageDirectories } from './config/storage.js'
 import { authService } from './modules/auth/auth.service.js'
 import { seedVideoTemplates } from './modules/template/template.seed-runner.js'
+import { productionService } from './modules/production/production.service.js'
 import { logger, loggerError } from './utils/logger.js'
 import { wsHub } from './ws/ws.server.js'
 
@@ -91,6 +92,8 @@ async function bootstrap() {
 
   await listenWithRetry(server, config.port)
   wsHub.attach(server)
+
+  await productionService.recoverOnBoot().catch((err) => loggerError('Production recovery failed', err))
 
   logger(`XueAI Video Factory API running on http://localhost:${config.port}`)
   logger(`Health check: http://localhost:${config.port}/api/health`)

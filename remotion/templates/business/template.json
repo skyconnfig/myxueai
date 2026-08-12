@@ -1,0 +1,32 @@
+{
+  "name": "商业洞察 60秒",
+  "slug": "business",
+  "composition": "VideoComposition",
+  "duration": 60,
+  "ratio": "16:9",
+  "fps": 30,
+  "meta": { "id": "business", "title": "商业洞察", "templateSlug": "business", "version": 1 },
+  "style": {
+    "accentColor": "#60A5FA",
+    "captionColor": "#F1F5F9",
+    "captionFont": "'PingFang SC', 'Inter', sans-serif",
+    "captionFontSize": 36,
+    "captionWeight": 700,
+    "backgroundColor": "#0F172A",
+    "bgmCategory": "rising_energy",
+    "bgmVolume": 0.22,
+    "visualStyle": "corporate documentary, real office, natural light, premium business, photorealistic",
+    "defaultTransition": "cut",
+    "cameraFamily": "dolly",
+    "subtitleStyle": "clean",
+    "emphasizeNumbers": true
+  },
+  "sceneBlueprint": [
+    { "order": 1, "purpose": "hook", "component": "cinematic_still", "durationRatio": 0.12, "camera": { "shotType": "medium", "type": "dolly_in", "speed": 0.5 }, "transition": "cut", "bgmIntensity": "high", "voiceHint": "商业反直觉" },
+    { "order": 2, "purpose": "context", "component": "cinematic_still", "durationRatio": 0.16, "camera": { "shotType": "wide", "type": "pan_right", "speed": 0.4 }, "transition": "cut", "bgmIntensity": "medium", "voiceHint": "行业背景" },
+    { "order": 3, "purpose": "problem", "component": "broll_video", "durationRatio": 0.18, "camera": { "shotType": "medium", "type": "dolly_in", "speed": 0.4 }, "transition": "cut", "bgmIntensity": "medium", "voiceHint": "企业痛点" },
+    { "order": 4, "purpose": "insight", "component": "cinematic_still", "durationRatio": 0.22, "camera": { "shotType": "close_up", "type": "static", "speed": 0.3 }, "transition": "cut", "bgmIntensity": "medium", "voiceHint": "核心洞察" },
+    { "order": 5, "purpose": "solution", "component": "DashboardAnimation", "durationRatio": 0.2, "camera": { "shotType": "medium", "type": "dolly_in", "speed": 0.5 }, "transition": "slide", "bgmIntensity": "medium", "voiceHint": "解决方案" },
+    { "order": 6, "purpose": "cta", "component": "CTA", "durationRatio": 0.12, "camera": { "shotType": "medium", "type": "static", "speed": 0.3 }, "transition": "fade", "bgmIntensity": "swell", "voiceHint": "联系咨询" }
+  ]
+}

@@ -160,7 +160,7 @@ export class ProjectService {
       project.status === ProjectStatus.RENDERING ||
       productionService.isPipelineRunning(id)
     ) {
-      await productionService.cancelProject(id)
+      await productionService.cancel(id)
     }
     await projectRepository.delete(id)
   }

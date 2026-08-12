@@ -17,6 +17,13 @@ export interface DirectorPlanScene {
   process?: string
   result?: string
   uiSteps?: UiStep[]
+  /** cinematic fields carried through from the LLM VideoPlan */
+  title?: string
+  action?: string
+  negativePrompt?: string
+  sceneType?: string
+  /** per-scene BGM ducking intent */
+  bgmIntensity?: string
   assetRequirement: {
     role: 'evidence' | 'illustration'
     type: 'stock' | 'ai-image' | 'screen-recording' | 'component'
@@ -54,4 +61,11 @@ export interface StoryboardScene {
   cues?: Array<{ timeSec: number; event: string }>
   uiSteps?: UiStep[]
   sceneProps?: Record<string, unknown>
+  /** cinematic fields carried through to DB Scene rows */
+  title?: string
+  emotion?: string
+  action?: string
+  negativePrompt?: string
+  sceneType?: string
+  bgmIntensity?: string
 }

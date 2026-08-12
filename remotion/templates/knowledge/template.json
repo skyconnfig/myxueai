@@ -1,0 +1,32 @@
+{
+  "name": "知识口播 60秒",
+  "slug": "knowledge",
+  "composition": "VideoComposition",
+  "duration": 60,
+  "ratio": "9:16",
+  "fps": 30,
+  "meta": { "id": "knowledge", "title": "知识口播", "templateSlug": "knowledge", "version": 1 },
+  "style": {
+    "accentColor": "#FBBF24",
+    "captionColor": "#FFFBEB",
+    "captionFont": "'PingFang SC', 'Source Han Sans', sans-serif",
+    "captionFontSize": 40,
+    "captionWeight": 700,
+    "backgroundColor": "#1C1917",
+    "bgmCategory": "tech_rhythm",
+    "bgmVolume": 0.18,
+    "visualStyle": "warm documentary, real workspace, natural daylight, soft focus background, authentic",
+    "defaultTransition": "cut",
+    "cameraFamily": "static",
+    "subtitleStyle": "karaoke",
+    "emphasizeNumbers": true
+  },
+  "sceneBlueprint": [
+    { "order": 1, "purpose": "hook", "component": "cinematic_still", "durationRatio": 0.1, "camera": { "shotType": "close_up", "type": "static", "speed": 0.3 }, "transition": "cut", "bgmIntensity": "medium", "voiceHint": "提问钩子" },
+    { "order": 2, "purpose": "context", "component": "cinematic_still", "durationRatio": 0.16, "camera": { "shotType": "medium", "type": "static", "speed": 0.3 }, "transition": "cut", "bgmIntensity": "low", "voiceHint": "背景铺垫" },
+    { "order": 3, "purpose": "problem", "component": "cinematic_still", "durationRatio": 0.18, "camera": { "shotType": "close_up", "type": "static", "speed": 0.3 }, "transition": "cut", "bgmIntensity": "low", "voiceHint": "常见误区" },
+    { "order": 4, "purpose": "insight", "component": "cinematic_still", "durationRatio": 0.24, "camera": { "shotType": "close_up", "type": "static", "speed": 0.3 }, "transition": "cut", "bgmIntensity": "medium", "voiceHint": "核心知识点" },
+    { "order": 5, "purpose": "solution", "component": "cinematic_still", "durationRatio": 0.2, "camera": { "shotType": "medium", "type": "static", "speed": 0.3 }, "transition": "cut", "bgmIntensity": "medium", "voiceHint": "实操方法" },
+    { "order": 6, "purpose": "cta", "component": "CTA", "durationRatio": 0.12, "camera": { "shotType": "medium", "type": "static", "speed": 0.3 }, "transition": "fade", "bgmIntensity": "swell", "voiceHint": "点赞收藏" }
+  ]
+}

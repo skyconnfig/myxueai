@@ -88,7 +88,7 @@ export class TaskService {
       task.status === TaskStatus.RUNNING ||
       productionService.isPipelineRunning(task.projectId)
     ) {
-      await productionService.cancelProject(task.projectId)
+      await productionService.cancel(task.projectId)
     } else {
       await taskRepository.update(task.id, {
         status: TaskStatus.FAILED,

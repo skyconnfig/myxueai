@@ -1,0 +1,32 @@
+{
+  "name": "故事叙事 60秒",
+  "slug": "story",
+  "composition": "VideoComposition",
+  "duration": 60,
+  "ratio": "9:16",
+  "fps": 30,
+  "meta": { "id": "story", "title": "故事叙事", "templateSlug": "story", "version": 1 },
+  "style": {
+    "accentColor": "#F472B6",
+    "captionColor": "#FFF1F2",
+    "captionFont": "'PingFang SC', 'Songti SC', serif",
+    "captionFontSize": 38,
+    "captionWeight": 700,
+    "backgroundColor": "#1B1020",
+    "bgmCategory": "suspense_low",
+    "bgmVolume": 0.26,
+    "visualStyle": "cinematic narrative, golden hour, shallow depth of field, film grain, emotional realism",
+    "defaultTransition": "fade",
+    "cameraFamily": "parallax",
+    "subtitleStyle": "minimal",
+    "emphasizeNumbers": false
+  },
+  "sceneBlueprint": [
+    { "order": 1, "purpose": "hook", "component": "cinematic_still", "durationRatio": 0.14, "camera": { "shotType": "close_up", "type": "parallax", "speed": 0.5 }, "transition": "fade", "bgmIntensity": "low", "voiceHint": "悬念开场" },
+    { "order": 2, "purpose": "context", "component": "cinematic_still", "durationRatio": 0.18, "camera": { "shotType": "wide", "type": "pan_right", "speed": 0.4 }, "transition": "cut", "bgmIntensity": "low", "voiceHint": "故事背景" },
+    { "order": 3, "purpose": "problem", "component": "cinematic_still", "durationRatio": 0.2, "camera": { "shotType": "over_shoulder", "type": "parallax", "speed": 0.5 }, "transition": "fade", "bgmIntensity": "low", "voiceHint": "冲突" },
+    { "order": 4, "purpose": "insight", "component": "cinematic_still", "durationRatio": 0.2, "camera": { "shotType": "close_up", "type": "dolly_in", "speed": 0.4 }, "transition": "cut", "bgmIntensity": "medium", "voiceHint": "转折" },
+    { "order": 5, "purpose": "solution", "component": "cinematic_still", "durationRatio": 0.16, "camera": { "shotType": "medium", "type": "dolly_out", "speed": 0.4 }, "transition": "fade", "bgmIntensity": "medium", "voiceHint": "结局" },
+    { "order": 6, "purpose": "cta", "component": "CTA", "durationRatio": 0.12, "camera": { "shotType": "medium", "type": "static", "speed": 0.3 }, "transition": "fade", "bgmIntensity": "swell", "voiceHint": "关注看下集" }
+  ]
+}

@@ -65,6 +65,79 @@ export const TEMPLATE_SEEDS = [
       { order: 5, sceneType: 'cta', componentName: 'CTA', durationRatio: 0.2, cameraRule: 'medium', assetRole: 'illustration', transition: 'fade' },
     ],
   },
+  {
+    style: { slug: 'tech-cinematic', label: '科技电影感', motionFamily: 'cinematic-dolly', negativePrompt: 'PPT slide, infographic, UI card, powerpoint, template' },
+    template: { slug: 'tech', name: '科技解读 60秒', category: '科技', description: 'Hook → 背景 → 痛点 → 洞察 → 方案 → CTA，电影镜头+硬切', duration: 60, ratio: '9:16' },
+    scenes: [
+      { order: 1, sceneType: 'hook', componentName: 'cinematic_still', durationRatio: 0.12, cameraRule: 'close_up, dolly_in', assetRole: 'illustration', voiceHint: '反直觉科技观点', transition: 'cut' },
+      { order: 2, sceneType: 'context', componentName: 'cinematic_still', durationRatio: 0.16, cameraRule: 'medium, pan_right', assetRole: 'illustration', voiceHint: '交代背景', transition: 'cut' },
+      { order: 3, sceneType: 'problem', componentName: 'broll_video', durationRatio: 0.18, cameraRule: 'over_shoulder, dolly_in', assetRole: 'evidence', voiceHint: '痛点场景', transition: 'cut' },
+      { order: 4, sceneType: 'insight', componentName: 'cinematic_still', durationRatio: 0.22, cameraRule: 'close_up, static', assetRole: 'illustration', voiceHint: '核心洞察', transition: 'cut' },
+      { order: 5, sceneType: 'solution', componentName: 'BrowserWindow', durationRatio: 0.2, cameraRule: 'medium, dolly_in', assetRole: 'illustration', voiceHint: '方案演示', transition: 'slide' },
+      { order: 6, sceneType: 'cta', componentName: 'CTA', durationRatio: 0.12, cameraRule: 'medium, static', assetRole: 'illustration', voiceHint: '关注获取更多', transition: 'fade' },
+    ],
+  },
+  {
+    style: { slug: 'knowledge-warm', label: '知识口播温暖', motionFamily: 'spring-subtle', negativePrompt: 'PPT slide, infographic, plastic, template' },
+    template: { slug: 'knowledge', name: '知识口播 60秒', category: '知识', description: '提问 → 背景 → 误区 → 知识点 → 方法 → CTA，静态镜头+逐字字幕', duration: 60, ratio: '9:16' },
+    scenes: [
+      { order: 1, sceneType: 'hook', componentName: 'cinematic_still', durationRatio: 0.1, cameraRule: 'close_up, static', assetRole: 'illustration', voiceHint: '提问钩子', transition: 'cut' },
+      { order: 2, sceneType: 'context', componentName: 'cinematic_still', durationRatio: 0.16, cameraRule: 'medium, static', assetRole: 'illustration', voiceHint: '背景铺垫', transition: 'cut' },
+      { order: 3, sceneType: 'problem', componentName: 'cinematic_still', durationRatio: 0.18, cameraRule: 'close_up, static', assetRole: 'illustration', voiceHint: '常见误区', transition: 'cut' },
+      { order: 4, sceneType: 'insight', componentName: 'cinematic_still', durationRatio: 0.24, cameraRule: 'close_up, static', assetRole: 'illustration', voiceHint: '核心知识点', transition: 'cut' },
+      { order: 5, sceneType: 'solution', componentName: 'cinematic_still', durationRatio: 0.2, cameraRule: 'medium, static', assetRole: 'illustration', voiceHint: '实操方法', transition: 'cut' },
+      { order: 6, sceneType: 'cta', componentName: 'CTA', durationRatio: 0.12, cameraRule: 'medium, static', assetRole: 'illustration', voiceHint: '点赞收藏', transition: 'fade' },
+    ],
+  },
+  {
+    style: { slug: 'business-premium', label: '商业高端', motionFamily: 'cinematic-dolly', negativePrompt: 'cartoon, plastic, template, PPT slide' },
+    template: { slug: 'business', name: '商业洞察 60秒', category: '商业', description: 'Hook → 行业背景 → 痛点 → 洞察 → 方案 → CTA，推轨镜头+硬切', duration: 60, ratio: '16:9' },
+    scenes: [
+      { order: 1, sceneType: 'hook', componentName: 'cinematic_still', durationRatio: 0.12, cameraRule: 'medium, dolly_in', assetRole: 'illustration', voiceHint: '商业反直觉', transition: 'cut' },
+      { order: 2, sceneType: 'context', componentName: 'cinematic_still', durationRatio: 0.16, cameraRule: 'wide, pan_right', assetRole: 'illustration', voiceHint: '行业背景', transition: 'cut' },
+      { order: 3, sceneType: 'problem', componentName: 'broll_video', durationRatio: 0.18, cameraRule: 'medium, dolly_in', assetRole: 'evidence', voiceHint: '企业痛点', transition: 'cut' },
+      { order: 4, sceneType: 'insight', componentName: 'cinematic_still', durationRatio: 0.22, cameraRule: 'close_up, static', assetRole: 'illustration', voiceHint: '核心洞察', transition: 'cut' },
+      { order: 5, sceneType: 'solution', componentName: 'DashboardAnimation', durationRatio: 0.2, cameraRule: 'medium, dolly_in', assetRole: 'illustration', voiceHint: '解决方案', transition: 'slide' },
+      { order: 6, sceneType: 'cta', componentName: 'CTA', durationRatio: 0.12, cameraRule: 'medium, static', assetRole: 'illustration', voiceHint: '联系咨询', transition: 'fade' },
+    ],
+  },
+  {
+    style: { slug: 'story-emotional', label: '故事情绪', motionFamily: 'cinematic-parallax', negativePrompt: 'plastic, cartoon, template, PPT slide' },
+    template: { slug: 'story', name: '故事叙事 60秒', category: '故事', description: '悬念 → 背景 → 冲突 → 转折 → 结局 → CTA，视差+淡入淡出', duration: 60, ratio: '9:16' },
+    scenes: [
+      { order: 1, sceneType: 'hook', componentName: 'cinematic_still', durationRatio: 0.14, cameraRule: 'close_up, parallax', assetRole: 'illustration', voiceHint: '悬念开场', transition: 'fade' },
+      { order: 2, sceneType: 'context', componentName: 'cinematic_still', durationRatio: 0.18, cameraRule: 'wide, pan_right', assetRole: 'illustration', voiceHint: '故事背景', transition: 'cut' },
+      { order: 3, sceneType: 'problem', componentName: 'cinematic_still', durationRatio: 0.2, cameraRule: 'over_shoulder, parallax', assetRole: 'evidence', voiceHint: '冲突', transition: 'fade' },
+      { order: 4, sceneType: 'insight', componentName: 'cinematic_still', durationRatio: 0.2, cameraRule: 'close_up, dolly_in', assetRole: 'illustration', voiceHint: '转折', transition: 'cut' },
+      { order: 5, sceneType: 'solution', componentName: 'cinematic_still', durationRatio: 0.16, cameraRule: 'medium, dolly_out', assetRole: 'illustration', voiceHint: '结局', transition: 'fade' },
+      { order: 6, sceneType: 'cta', componentName: 'CTA', durationRatio: 0.12, cameraRule: 'medium, static', assetRole: 'illustration', voiceHint: '关注看下集', transition: 'fade' },
+    ],
+  },
+  {
+    style: { slug: 'product-commercial', label: '产品广告', motionFamily: 'cinematic-dolly', negativePrompt: 'plastic, template, PPT slide, infographic' },
+    template: { slug: 'product', name: '产品种草 60秒', category: '产品', description: '惊艳 → 场景 → 痛点 → 亮点 → 演示 → 对比 → CTA，微距+硬切', duration: 60, ratio: '9:16' },
+    scenes: [
+      { order: 1, sceneType: 'hook', componentName: 'cinematic_still', durationRatio: 0.1, cameraRule: 'macro, dolly_in', assetRole: 'illustration', voiceHint: '产品惊艳瞬间', transition: 'cut' },
+      { order: 2, sceneType: 'context', componentName: 'cinematic_still', durationRatio: 0.14, cameraRule: 'medium, pan_right', assetRole: 'illustration', voiceHint: '使用场景', transition: 'cut' },
+      { order: 3, sceneType: 'problem', componentName: 'cinematic_still', durationRatio: 0.16, cameraRule: 'close_up, static', assetRole: 'evidence', voiceHint: '用户痛点', transition: 'cut' },
+      { order: 4, sceneType: 'insight', componentName: 'cinematic_still', durationRatio: 0.18, cameraRule: 'macro, dolly_in', assetRole: 'illustration', voiceHint: '产品亮点', transition: 'cut' },
+      { order: 5, sceneType: 'demo', componentName: 'ProductDemo', durationRatio: 0.24, cameraRule: 'over_shoulder, dolly_in', assetRole: 'evidence', voiceHint: '使用演示', transition: 'slide' },
+      { order: 6, sceneType: 'result', componentName: 'BeforeAfter', durationRatio: 0.14, cameraRule: 'medium, static', assetRole: 'evidence', voiceHint: '效果对比', transition: 'cut' },
+      { order: 7, sceneType: 'cta', componentName: 'CTA', durationRatio: 0.04, cameraRule: 'close_up, static', assetRole: 'illustration', voiceHint: '立即下单', transition: 'fade' },
+    ],
+  },
+  {
+    style: { slug: 'news-press', label: '资讯播报', motionFamily: 'spring-subtle', negativePrompt: 'cartoon, plastic, template, PPT slide' },
+    template: { slug: 'news', name: '资讯播报 60秒', category: '资讯', description: '头条 → 背景 → 影响 → 数据 → 回应 → CTA，静态镜头+硬切', duration: 60, ratio: '16:9' },
+    scenes: [
+      { order: 1, sceneType: 'hook', componentName: 'cinematic_still', durationRatio: 0.1, cameraRule: 'medium, static', assetRole: 'illustration', voiceHint: '头条速递', transition: 'cut' },
+      { order: 2, sceneType: 'context', componentName: 'cinematic_still', durationRatio: 0.18, cameraRule: 'wide, static', assetRole: 'illustration', voiceHint: '事件背景', transition: 'cut' },
+      { order: 3, sceneType: 'problem', componentName: 'broll_video', durationRatio: 0.2, cameraRule: 'medium, pan_right', assetRole: 'evidence', voiceHint: '影响范围', transition: 'cut' },
+      { order: 4, sceneType: 'insight', componentName: 'cinematic_still', durationRatio: 0.22, cameraRule: 'close_up, static', assetRole: 'illustration', voiceHint: '关键数据', transition: 'cut' },
+      { order: 5, sceneType: 'solution', componentName: 'cinematic_still', durationRatio: 0.18, cameraRule: 'medium, static', assetRole: 'illustration', voiceHint: '各方回应', transition: 'cut' },
+      { order: 6, sceneType: 'cta', componentName: 'CTA', durationRatio: 0.12, cameraRule: 'medium, static', assetRole: 'illustration', voiceHint: '关注追踪', transition: 'fade' },
+    ],
+  },
 ] as const
 
 export const COMPONENT_SEEDS = [

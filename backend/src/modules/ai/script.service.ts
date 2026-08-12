@@ -228,6 +228,11 @@ function mapPlanScenesToDb(plan: VideoPlan) {
         cameraMovement: scene.cameraMotion ?? 'slow_dolly_in',
         lighting: scene.lighting ?? '',
         emotion: scene.emotion ?? '',
+        title: scene.title,
+        action: scene.action,
+        negativePrompt: scene.negativePrompt,
+        sceneType: scene.sceneType,
+        bgmIntensity: (scene as { bgmIntensity?: string }).bgmIntensity,
         visualDescription: scene.visual ?? scene.description,
         motionDescription: scene.action ?? '',
         voiceover: scene.voice ?? scene.description,
@@ -285,7 +290,9 @@ export class ScriptService {
 
 
 
-    await creditsService.deduct(config.workspace.scriptGenerationCost, 'script_generation')
+    if (!input.skipCredits) {
+      await creditsService.deduct(config.workspace.scriptGenerationCost, 'script_generation')
+    }
 
 
 

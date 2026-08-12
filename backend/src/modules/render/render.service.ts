@@ -40,7 +40,7 @@ async function runRemotionRender(
   inputPath: string,
   outputPath: string,
   renderId: string,
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<{ ok: boolean; error?: string; durationMs?: number; fileSizeBytes?: number }> {
   return new Promise((resolve) => {
     const scriptPath = path.join(remotionRoot, 'scripts', 'render.mjs')
     if (!fs.existsSync(scriptPath)) {
@@ -66,6 +66,7 @@ async function runRemotionRender(
     let stdout = ''
     let stderr = ''
     let lastPersisted = -1
+    let durationMs: number | undefined
 
     const persistProgress = (pct: number) => {
       if (pct <= lastPersisted) return
@@ -91,7 +92,19 @@ async function runRemotionRender(
     child.on('close', (code) => {
       if (code === 0 && fs.existsSync(outputPath)) {
         persistProgress(100)
-        resolve({ ok: true })
+        let fileSizeBytes: number | undefined
+        try {
+          fileSizeBytes = fs.statSync(outputPath).size
+        } catch {
+          fileSizeBytes = undefined
+        }
+        try {
+          const input = JSON.parse(fs.readFileSync(inputPath, 'utf8')) as RenderInput
+          if (input.duration > 0) durationMs = Math.round(input.duration * 1000)
+        } catch {
+          durationMs = undefined
+        }
+        resolve({ ok: true, durationMs, fileSizeBytes })
         return
       }
       const detail = (stderr || stdout).slice(-800)
@@ -181,6 +194,9 @@ export class RenderService {
         return {
           renderId: render.id,
           outputUrl: render.outputUrl ?? '',
+          outputPath: render.outputPath ?? null,
+          durationMs: render.durationMs ?? null,
+          fileSizeBytes: render.fileSizeBytes ?? null,
           usedRemotion: Boolean(render.outputUrl?.endsWith('.mp4')),
           format: render.outputUrl?.endsWith('.mp4') ? 'mp4' : 'preview',
         }
@@ -216,8 +232,12 @@ export class RenderService {
       await renderRepository.update(renderId, {
         status: 'SUCCESS',
         outputUrl,
+        outputPath: mp4Path,
+        durationMs: remotionResult.durationMs ?? null,
+        fileSizeBytes: remotionResult.fileSizeBytes ?? null,
         progress: 100,
         error: null,
+        completedAt: new Date(),
       })
       await projectRepository.update(projectId, {
         status: ProjectStatus.COMPLETED,
@@ -231,6 +251,7 @@ export class RenderService {
       outputUrl,
       progress: 100,
       error: remotionResult.error?.slice(0, 2000) ?? 'Render failed',
+      completedAt: new Date(),
     })
     await projectRepository.update(projectId, {
       status: ProjectStatus.FAILED,
@@ -246,6 +267,9 @@ export class RenderService {
       projectId: render.projectId,
       composition: render.composition,
       outputUrl: render.outputUrl,
+      outputPath: render.outputPath,
+      durationMs: render.durationMs,
+      fileSizeBytes: render.fileSizeBytes,
       width: render.width,
       height: render.height,
       fps: render.fps,

@@ -1,41 +1,34 @@
 import { AppError } from '../../middleware/error-handler.js'
 import { config } from '../../config/index.js'
-import { ProjectStatus, TaskStatus, TaskType } from '../../constants/status.js'
-import { loggerError } from '../../utils/logger.js'
+import {
+  FINAL_PROGRESS,
+  PipelineStep,
+  PIPELINE_STEPS,
+  PIPELINE_STEP_LABELS,
+  ProductionJobStatus,
+  ProductionStage,
+  ProjectStatus,
+  STAGE_TO_STEP,
+  STEP_BASE_PROGRESS,
+  STEP_TO_STAGE,
+  type ProductionErrorMeta,
+  type ProductionStepRecord,
+} from '../../constants/status.js'
+import { logger, loggerError } from '../../utils/logger.js'
 import { wsHub } from '../../ws/ws.server.js'
 import { assetPlannerService } from '../asset-planner/asset-planner.service.js'
 import { assetService } from '../asset/asset.service.js'
 import { reviewService } from '../review/review.service.js'
 import { composeService } from '../compose/compose.service.js'
+import { scriptService } from '../ai/script.service.js'
 import { projectRepository } from '../project/project.repository.js'
 import { projectService } from '../project/project.service.js'
 import { renderService } from '../render/render.service.js'
-import { taskRepository } from '../task/task.repository.js'
+import { productionJobRepository } from './production-job.repository.js'
 import { creditsService } from '../workspace/credits.service.js'
 
-const PIPELINE: Array<{ type: string; key: string; label: string }> = [
-  { type: TaskType.SCRIPT, key: 'script', label: 'AI 脚本' },
-  { type: TaskType.STOCK, key: 'stock', label: 'B-roll 素材' },
-  { type: TaskType.IMAGE, key: 'image', label: '素材生成' },
-  { type: TaskType.VOICE, key: 'voice', label: '配音合成' },
-  { type: TaskType.VIDEO, key: 'compose', label: '视频合成' },
-  { type: TaskType.RENDER, key: 'render', label: '渲染导出' },
-  { type: TaskType.REVIEW, key: 'review', label: 'AI 审片' },
-]
-
-const TASK_LABELS: Record<string, string> = {
-  SCRIPT: 'VideoPlan JSON 解析与脚本生成',
-  STOCK: 'Pexels B-roll 自动绑定',
-  IMAGE: 'AI 画面素材批量生成',
-  VOICE: 'TTS 配音与情感合成',
-  VIDEO: '多轨时间轴自动剪辑',
-  RENDER: '4K 流水线渲染导出',
-  REVIEW: 'TwelveLabs + LLM 混合审片',
-  OPTIMIZE: '审片一键优化',
-}
-
-const runningPipelines = new Set<string>()
-const cancelledProjects = new Set<string>()
+type ProductionJob = Awaited<ReturnType<typeof productionJobRepository.findById>>
+type StepKey = (typeof PipelineStep)[keyof typeof PipelineStep]
 
 class PipelineCancelledError extends Error {
   constructor() {
@@ -44,289 +37,395 @@ class PipelineCancelledError extends Error {
   }
 }
 
-function assertNotCancelled(projectId: string) {
-  if (cancelledProjects.has(projectId)) {
-    throw new PipelineCancelledError()
-  }
+const fmt = (d: Date) => d.toISOString().slice(11, 19)
+
+function nextBase(step: StepKey): number {
+  const idx = PIPELINE_STEPS.indexOf(step)
+  if (idx < 0 || idx >= PIPELINE_STEPS.length - 1) return FINAL_PROGRESS
+  return STEP_BASE_PROGRESS[PIPELINE_STEPS[idx + 1]] ?? FINAL_PROGRESS
 }
 
-function formatTime(date: Date) {
-  return date.toTimeString().slice(0, 8)
+function overallProgress(stage: string, stagePct: number): number {
+  if (stage === ProductionStage.COMPLETED) return 100
+  if (stage === ProductionStage.QUEUED || stage === ProductionStage.CREATED) return 0
+  const step = STAGE_TO_STEP[stage] as StepKey | undefined
+  if (!step) return 0
+  const base = STEP_BASE_PROGRESS[step] ?? 0
+  const next = nextBase(step)
+  const pct = Math.min(100, Math.max(0, stagePct))
+  return Math.min(next, Math.round(base + (pct / 100) * (next - base)))
 }
 
-type ProjectTask = Awaited<ReturnType<typeof taskRepository.findByProjectId>>[number]
-
-const TASK_STATUS_RANK: Record<string, number> = {
-  [TaskStatus.SUCCESS]: 4,
-  [TaskStatus.RUNNING]: 3,
-  [TaskStatus.FAILED]: 2,
-  [TaskStatus.WAITING]: 1,
+function getRecords(job: NonNullable<ProductionJob>): ProductionStepRecord[] {
+  return (job.steps as unknown as ProductionStepRecord[]) ?? []
 }
 
-function pickPreferredTask(current: ProjectTask, candidate: ProjectTask) {
-  const currentRank = TASK_STATUS_RANK[current.status] ?? 0
-  const candidateRank = TASK_STATUS_RANK[candidate.status] ?? 0
-  if (candidateRank !== currentRank) {
-    return candidateRank > currentRank ? candidate : current
-  }
-  return candidate.updatedAt >= current.updatedAt ? candidate : current
+function findRec(records: ProductionStepRecord[], key: string) {
+  return records.find((r) => r.key === key)
 }
 
 export class ProductionService {
-  private normalizePipelineTasks(tasks: ProjectTask[]) {
-    const byType = new Map<string, ProjectTask>()
-    const duplicates: ProjectTask[] = []
+  private runningJobs = new Map<string, AbortController>()
+  private cancelledProjects = new Set<string>()
 
-    for (const task of tasks) {
-      const existing = byType.get(task.type)
-      if (!existing) {
-        byType.set(task.type, task)
-        continue
-      }
-      const preferred = pickPreferredTask(existing, task)
-      const duplicate = preferred.id === existing.id ? task : existing
-      byType.set(task.type, preferred)
-      duplicates.push(duplicate)
-    }
-
-    return {
-      tasks: PIPELINE.map((step) => byType.get(step.type)).filter(Boolean) as ProjectTask[],
-      duplicates,
-    }
+  isPipelineRunning(projectId: string) {
+    return this.runningJobs.has(projectId)
   }
 
-  private async ensurePipelineTasks(projectId: string, hasScenes: boolean) {
-    const existing = await taskRepository.findByProjectId(projectId)
-    const { tasks, duplicates } = this.normalizePipelineTasks(existing)
-
-    for (const duplicate of duplicates) {
-      await taskRepository.delete(duplicate.id)
-    }
-
-    const byType = new Map(tasks.map((task) => [task.type, task]))
-
-    for (const step of PIPELINE) {
-      if (!byType.has(step.type)) {
-        const isScriptDone = step.type === TaskType.SCRIPT && hasScenes
-        await taskRepository.create({
-          projectId,
-          type: step.type,
-          status: isScriptDone ? TaskStatus.SUCCESS : TaskStatus.WAITING,
-          progress: isScriptDone ? 100 : 0,
-        })
-      }
-    }
-
-    const latest = await taskRepository.findByProjectId(projectId)
-    return this.normalizePipelineTasks(latest).tasks
+  private assertNotCancelled(projectId: string) {
+    if (this.cancelledProjects.has(projectId)) throw new PipelineCancelledError()
   }
 
-  private buildSteps(tasks: ProjectTask[]) {
-    return PIPELINE.map((step) => {
-      const task = tasks.find((t) => t.type === step.type)
-      if (!task) {
-        return { key: step.key, label: step.label, status: 'waiting' as const, progress: 0, time: '' }
-      }
-      let status: 'success' | 'running' | 'waiting' | 'failed' = 'waiting'
-      if (task.status === TaskStatus.SUCCESS) status = 'success'
-      else if (task.status === TaskStatus.RUNNING) status = 'running'
-      else if (task.status === TaskStatus.FAILED) status = 'failed'
+  private async emitEvent(
+    projectId: string,
+    type: 'progress' | 'step_started' | 'step_completed' | 'failed' | 'cancelled' | 'completed',
+    p: { taskId: string; step: string | null; status: string | null; progress: number; message: string },
+  ) {
+    wsHub.broadcastProductionEvent(projectId, type, p)
+  }
+
+  private async emitStatus(projectId: string) {
+    wsHub.broadcastProductionUpdate(projectId, await this.getStatus(projectId))
+  }
+
+  private buildStepsView(job: NonNullable<ProductionJob> | null) {
+    const records = job ? getRecords(job) : []
+    return PIPELINE_STEPS.map((key) => {
+      const rec = findRec(records, key)
       return {
-        key: step.key,
-        label: step.label,
-        status,
-        progress: task.progress,
-        time: task.status !== TaskStatus.WAITING ? formatTime(task.updatedAt) : '',
+        key,
+        label: PIPELINE_STEP_LABELS[key] ?? key,
+        status: rec?.status ?? 'waiting',
+        progress: rec?.progress ?? 0,
+        time: rec?.completedAt ? fmt(new Date(rec.completedAt)) : '',
+        durationMs: rec?.durationMs ?? null,
+        retryCount: rec?.retryCount ?? 0,
       }
     })
   }
 
-  private buildLogs(tasks: ProjectTask[]) {
+  private buildLogs(job: NonNullable<ProductionJob>) {
     const logs: Array<{ time: string; message: string }> = []
-    for (const task of [...tasks].reverse()) {
-      const label = TASK_LABELS[task.type] ?? task.type
-      if (task.status === TaskStatus.SUCCESS) {
-        logs.push({ time: formatTime(task.updatedAt), message: `${label} 完成 ✓` })
-      } else if (task.status === TaskStatus.RUNNING) {
-        logs.push({ time: formatTime(task.updatedAt), message: `${label} 进行中... ${task.progress}%` })
-      } else if (task.status === TaskStatus.FAILED) {
-        logs.push({ time: formatTime(task.updatedAt), message: `${label} 失败：${task.error ?? '未知错误'}` })
+    const now = fmt(new Date())
+    for (const rec of getRecords(job)) {
+      const label = PIPELINE_STEP_LABELS[rec.key] ?? rec.key
+      if (rec.status === 'success' && rec.completedAt) {
+        const dur = rec.durationMs ? ` (${Math.round(rec.durationMs / 1000)}s)` : ''
+        logs.push({ time: fmt(new Date(rec.completedAt)), message: `${label} 完成 ✓${dur}` })
+      } else if (rec.status === 'running') {
+        logs.push({ time: now, message: `${label} 进行中... ${rec.progress}%` })
+      } else if (rec.status === 'failed') {
+        logs.push({ time: rec.completedAt ? fmt(new Date(rec.completedAt)) : now, message: `${label} 失败：${rec.error ?? '未知错误'}` })
       }
     }
-    if (!logs.length) {
-      logs.push({ time: formatTime(new Date()), message: '等待启动生产流水线...' })
-    }
+    if (job.status === ProductionJobStatus.CANCELLED) logs.push({ time: now, message: '用户已取消生产任务' })
+    else if (job.status === ProductionJobStatus.COMPLETED) logs.push({ time: now, message: '生产流水线已完成 ✓' })
+    else if (!logs.length) logs.push({ time: now, message: '等待启动生产流水线...' })
     return logs
   }
 
-  private overallProgress(steps: ReturnType<ProductionService['buildSteps']>) {
-    const total = steps.reduce((sum, s) => sum + (s.status === 'success' ? 100 : s.progress), 0)
-    return Math.round(total / steps.length)
-  }
-
-  private async emitStatus(projectId: string) {
-    const status = await this.getStatus(projectId, false)
-    wsHub.broadcastProductionUpdate(projectId, status)
-    return status
-  }
-
-  private async runTask(
-    projectId: string,
-    type: string,
-    runner: (onProgress: (p: number) => Promise<void>) => Promise<void>,
-  ) {
-    const tasks = await taskRepository.findByProjectId(projectId)
-    const task = this.normalizePipelineTasks(tasks).tasks.find((t) => t.type === type)
-    if (!task) return
-
-    await taskRepository.update(task.id, { status: TaskStatus.RUNNING, progress: 5, error: null })
-    await this.emitStatus(projectId)
-
-    try {
-      await runner(async (progress) => {
-        await taskRepository.update(task.id, { progress })
-        await this.emitStatus(projectId)
-      })
-      await taskRepository.update(task.id, {
-        status: TaskStatus.SUCCESS,
-        progress: 100,
-        result: { completedAt: new Date().toISOString() },
-      })
-    } catch (error) {
-      if (error instanceof PipelineCancelledError) {
-        await taskRepository.update(task.id, { status: TaskStatus.FAILED, error: '用户已停止' })
-        return
-      }
-      const message = error instanceof Error ? error.message : '任务失败'
-      await taskRepository.update(task.id, { status: TaskStatus.FAILED, error: message })
-      await projectRepository.update(projectId, { status: ProjectStatus.FAILED })
-      throw error
-    }
-  }
-
-  async cancelProject(projectId: string) {
-    cancelledProjects.add(projectId)
-    runningPipelines.delete(projectId)
-
-    const tasks = await taskRepository.findByProjectId(projectId)
-    for (const task of tasks) {
-      if (task.status === TaskStatus.RUNNING || task.status === TaskStatus.WAITING) {
-        await taskRepository.update(task.id, {
-          status: TaskStatus.FAILED,
-          error: '用户已停止',
-        })
-      }
-    }
-
-    const project = await projectRepository.findById(projectId)
-    if (
-      project &&
-      (project.status === ProjectStatus.GENERATING || project.status === ProjectStatus.RENDERING)
-    ) {
-      await projectRepository.update(projectId, { status: ProjectStatus.PLANNING })
-    }
-
-    await this.emitStatus(projectId)
-    cancelledProjects.delete(projectId)
-  }
-
-  isPipelineRunning(projectId: string) {
-    return runningPipelines.has(projectId)
-  }
-
-  async runPipeline(projectId: string) {
-    if (runningPipelines.has(projectId)) return
-    runningPipelines.add(projectId)
-
-    try {
-      assertNotCancelled(projectId)
-      await this.runTask(projectId, TaskType.STOCK, async (onProgress) => {
-        await onProgress(20)
-        try {
-          await assetPlannerService.autoFillProject(projectId)
-        } catch {
-          // Pexels optional — skip when unconfigured or no matches
-        }
-        await onProgress(100)
-      })
-
-      assertNotCancelled(projectId)
-      await this.runTask(projectId, TaskType.IMAGE, async (onProgress) => {
-        await assetService.generateImagesForProject(projectId, (p) => void onProgress(p))
-      })
-
-      assertNotCancelled(projectId)
-      await this.runTask(projectId, TaskType.VOICE, async (onProgress) => {
-        await assetService.generateVoiceForProject(projectId, (p) => void onProgress(p))
-      })
-
-      assertNotCancelled(projectId)
-      await this.runTask(projectId, TaskType.VIDEO, async (onProgress) => {
-        await composeService.composeForProject(projectId, (p) => void onProgress(p))
-      })
-
-      assertNotCancelled(projectId)
-      await this.runTask(projectId, TaskType.RENDER, async (onProgress) => {
-        await renderService.startRenderAndWait(projectId, (p) => void onProgress(p))
-      })
-
-      assertNotCancelled(projectId)
-      await this.runTask(projectId, TaskType.REVIEW, async (onProgress) => {
-        await onProgress(30)
-        try {
-          await reviewService.reviewProject(projectId)
-        } catch {
-          // Review optional when LLM/TwelveLabs unavailable
-        }
-        await onProgress(100)
-      })
-
-      if (cancelledProjects.has(projectId)) return
-
-      await projectRepository.update(projectId, { status: ProjectStatus.COMPLETED })
-      await this.emitStatus(projectId)
-    } catch (error) {
-      if (error instanceof PipelineCancelledError) return
-      throw error
-    } finally {
-      runningPipelines.delete(projectId)
-    }
-  }
-
-  async getStatus(projectId: string, _tick = true) {
+  async getStatus(projectId: string) {
     const project = await projectRepository.findById(projectId)
     if (!project) throw new AppError(404, 'PROJECT_NOT_FOUND', 'Project not found')
+    const job = await productionJobRepository.findLatestByProjectId(projectId)
+    const credits = await creditsService.getBalance()
 
-    const tasks = await this.ensurePipelineTasks(projectId, project.scenes.length > 0)
-    const steps = this.buildSteps(tasks)
-    const overallProgress = this.overallProgress(steps)
-    const isComplete = steps.every((s) => s.status === 'success')
-    const activeStep = steps.find((s) => s.status === 'running')?.key
-      ?? steps.find((s) => s.status === 'waiting')?.key
-      ?? 'render'
+    if (!job) {
+      return {
+        projectId, projectName: project.name, projectStatus: project.status,
+        overallProgress: 0, isComplete: project.status === ProjectStatus.COMPLETED, isProcessing: false,
+        activeStep: '', stage: '', jobStatus: '', taskId: null,
+        steps: this.buildStepsView(null), elapsedMs: null, etaMs: null,
+        error: null, errorMeta: null,
+        logs: [{ time: fmt(new Date()), message: '等待启动生产流水线...' }],
+        credits, videoUrl: project.videoUrl, renderId: null,
+      }
+    }
+
+    const isComplete = job.status === ProductionJobStatus.COMPLETED
+    const isProcessing = job.status === ProductionJobStatus.RUNNING
+    const activeStep = isProcessing ? (STAGE_TO_STEP[job.stage] ?? '') : ''
+    const elapsedMs = job.startedAt ? Date.now() - new Date(job.startedAt).getTime() : null
+    let etaMs: number | null = null
+    if (isProcessing && elapsedMs && job.progress > 0 && job.progress < 100) {
+      etaMs = Math.round((elapsedMs / job.progress) * (100 - job.progress))
+    }
 
     return {
-      projectId,
-      projectName: project.name,
+      projectId, projectName: project.name,
       projectStatus: isComplete ? ProjectStatus.COMPLETED : project.status,
-      overallProgress: isComplete ? 100 : overallProgress,
-      isComplete,
-      isProcessing: steps.some((s) => s.status === 'running') || runningPipelines.has(projectId),
-      activeStep,
-      steps,
-      logs: this.buildLogs(tasks),
-      credits: await creditsService.getBalance(),
-      videoUrl: project.videoUrl,
+      overallProgress: isComplete ? 100 : job.progress,
+      isComplete, isProcessing, activeStep, stage: job.stage, jobStatus: job.status, taskId: job.id,
+      steps: this.buildStepsView(job), elapsedMs, etaMs,
+      error: job.error, errorMeta: (job.errorMeta as ProductionErrorMeta | null) ?? null,
+      logs: this.buildLogs(job), credits, videoUrl: project.videoUrl, renderId: job.renderId,
+    }
+  }
+
+  async start(projectId: string, userId?: string) {
+    const project = await projectRepository.findById(projectId)
+    if (!project) throw new AppError(404, 'PROJECT_NOT_FOUND', 'Project not found')
+    const existing = await productionJobRepository.findActiveByProjectId(projectId)
+    if (existing && existing.status === ProductionJobStatus.RUNNING) return this.getStatus(projectId)
+
+    let job: NonNullable<ProductionJob>
+    if (existing && (existing.status === ProductionJobStatus.FAILED || existing.status === ProductionJobStatus.CANCELLED)) {
+      await this.resetForResume(existing, true)
+      job = (await productionJobRepository.findById(existing.id))!
+    } else {
+      await creditsService.deduct(config.workspace.productionCost, 'production_pipeline', userId)
+      job = await productionJobRepository.create({ projectId, userId }) as NonNullable<ProductionJob>
+      await projectRepository.update(projectId, { status: ProjectStatus.GENERATING })
+    }
+
+    this.runPipeline(job).catch((e) => {
+      if (!(e instanceof PipelineCancelledError)) loggerError(`Production pipeline failed for ${projectId}`, e)
+    })
+    const status = await this.getStatus(projectId)
+    return { ...status, creditsBalance: await creditsService.getBalance() }
+  }
+
+  async retry(projectId: string, _userId?: string) {
+    const existing = await productionJobRepository.findActiveByProjectId(projectId)
+    if (!existing || (existing.status !== ProductionJobStatus.FAILED && existing.status !== ProductionJobStatus.CANCELLED)) {
+      throw new AppError(400, 'NO_FAILED_JOB', '没有可重试的失败或已取消任务')
+    }
+    if (this.runningJobs.has(projectId)) throw new AppError(409, 'JOB_RUNNING', '任务正在运行中')
+    await this.resetForResume(existing, true)
+    const job = (await productionJobRepository.findById(existing.id))!
+    await projectRepository.update(projectId, { status: ProjectStatus.GENERATING })
+    this.runPipeline(job).catch((e) => {
+      if (!(e instanceof PipelineCancelledError)) loggerError(`Production retry failed for ${projectId}`, e)
+    })
+    return this.getStatus(projectId)
+  }
+
+  private async resetForResume(job: NonNullable<ProductionJob>, incrementAttempt: boolean) {
+    const records = getRecords(job)
+    for (const rec of records) {
+      if (rec.status === 'running' || rec.status === 'failed') {
+        if (rec.status === 'failed') rec.retryCount += 1
+        rec.status = 'waiting'; rec.progress = 0
+        rec.startedAt = null; rec.completedAt = null; rec.durationMs = null; rec.error = null
+      }
+    }
+    await productionJobRepository.update(job.id, {
+      status: ProductionJobStatus.RUNNING, stage: ProductionStage.QUEUED,
+      stageProgress: 0, progress: 0, error: null, errorMeta: null, steps: records,
+      attempt: incrementAttempt ? job.attempt + 1 : job.attempt,
+      startedAt: new Date(), completedAt: null,
+    })
+  }
+
+  async cancel(projectId: string) {
+    this.cancelledProjects.add(projectId)
+    const controller = this.runningJobs.get(projectId)
+    if (controller) controller.abort()
+
+    const job = await productionJobRepository.findRunningByProjectId(projectId)
+    if (job) {
+      const records = getRecords(job)
+      for (const rec of records) {
+        if (rec.status === 'running' || rec.status === 'waiting') {
+          rec.status = 'failed'; rec.error = '用户已取消'
+          if (!rec.completedAt) rec.completedAt = new Date().toISOString()
+        }
+      }
+      await productionJobRepository.update(job.id, {
+        status: ProductionJobStatus.CANCELLED, stageProgress: 0, steps: records, completedAt: new Date(),
+      })
+      await this.emitEvent(projectId, 'cancelled', {
+        taskId: job.id, step: STAGE_TO_STEP[job.stage] ?? null,
+        status: ProductionJobStatus.CANCELLED, progress: job.progress, message: '用户已取消生产任务',
+      })
+    }
+
+    const project = await projectRepository.findById(projectId)
+    if (project && (project.status === ProjectStatus.GENERATING || project.status === ProjectStatus.RENDERING)) {
+      await projectRepository.update(projectId, { status: ProjectStatus.PLANNING })
+    }
+    await this.emitStatus(projectId)
+    this.runningJobs.delete(projectId)
+    return this.getStatus(projectId)
+  }
+
+  private async runStep(
+    job: NonNullable<ProductionJob>,
+    stepKey: StepKey,
+    runner: (onProgress: (p: number) => Promise<void>) => Promise<void>,
+  ) {
+    this.assertNotCancelled(job.projectId)
+    const records = getRecords(job)
+    const rec = findRec(records, stepKey)
+    if (rec?.status === 'success') return
+
+    const stage = STEP_TO_STAGE[stepKey]
+    const nowIso = new Date().toISOString()
+    if (rec) { rec.status = 'running'; rec.progress = 5; rec.startedAt = nowIso; rec.completedAt = null; rec.error = null }
+    await productionJobRepository.update(job.id, {
+      stage, stageProgress: 5, progress: overallProgress(stage, 5), steps: records,
+    })
+    job.stage = stage; job.stageProgress = 5; job.progress = overallProgress(stage, 5)
+    await this.emitEvent(job.projectId, 'step_started', {
+      taskId: job.id, step: stepKey, status: stage, progress: job.progress,
+      message: `${PIPELINE_STEP_LABELS[stepKey] ?? stepKey} 开始`,
+    })
+    await this.emitStatus(job.projectId)
+
+    const startedMs = Date.now()
+    try {
+      await runner(async (progress) => {
+        const pct = Math.min(99, Math.max(0, progress))
+        if (rec) rec.progress = pct
+        await productionJobRepository.update(job.id, {
+          stageProgress: pct, progress: overallProgress(stage, pct), steps: records,
+        })
+        job.stageProgress = pct; job.progress = overallProgress(stage, pct)
+        await this.emitEvent(job.projectId, 'progress', {
+          taskId: job.id, step: stepKey, status: stage, progress: job.progress,
+          message: `${PIPELINE_STEP_LABELS[stepKey] ?? stepKey} ${pct}%`,
+        })
+        await this.emitStatus(job.projectId)
+      })
+      this.assertNotCancelled(job.projectId)
+      const durationMs = Date.now() - startedMs
+      if (rec) { rec.status = 'success'; rec.progress = 100; rec.completedAt = new Date().toISOString(); rec.durationMs = durationMs; rec.error = null }
+      const np = nextBase(stepKey)
+      await productionJobRepository.update(job.id, { stageProgress: 100, progress: np, steps: records })
+      job.stageProgress = 100; job.progress = np
+      await this.emitEvent(job.projectId, 'step_completed', {
+        taskId: job.id, step: stepKey, status: stage, progress: np,
+        message: `${PIPELINE_STEP_LABELS[stepKey] ?? stepKey} 完成 (${Math.round(durationMs / 1000)}s)`,
+      })
+      await this.emitStatus(job.projectId)
+    } catch (error) {
+      if (error instanceof PipelineCancelledError) throw error
+      const message = error instanceof Error ? error.message : '任务失败'
+      const retryable = !(error instanceof AppError) || (error as AppError).statusCode >= 500
+      if (rec) { rec.status = 'failed'; rec.error = message; rec.completedAt = new Date().toISOString() }
+      const errorMeta: ProductionErrorMeta = {
+        code: error instanceof AppError ? error.code : 'PRODUCTION_STEP_FAILED',
+        message, step: stepKey, retryable, timestamp: new Date().toISOString(),
+      }
+      await productionJobRepository.update(job.id, {
+        status: ProductionJobStatus.FAILED, error: message, errorMeta, steps: records,
+      })
+      await projectRepository.update(job.projectId, { status: ProjectStatus.FAILED })
+      await this.emitEvent(job.projectId, 'failed', {
+        taskId: job.id, step: stepKey, status: ProductionJobStatus.FAILED, progress: job.progress, message,
+      })
+      await this.emitStatus(job.projectId)
+      throw error
+    }
+  }
+
+  private async markStepSuccess(job: NonNullable<ProductionJob>, stepKey: StepKey) {
+    const records = getRecords(job)
+    const rec = findRec(records, stepKey)
+    if (rec) { rec.status = 'success'; rec.progress = 100; rec.completedAt = new Date().toISOString(); rec.durationMs = 0 }
+    await productionJobRepository.update(job.id, { steps: records })
+    await this.emitStatus(job.projectId)
+  }
+
+  private async runPipeline(job: NonNullable<ProductionJob>) {
+    if (this.runningJobs.has(job.projectId)) return
+    this.cancelledProjects.delete(job.projectId)
+    const controller = new AbortController()
+    this.runningJobs.set(job.projectId, controller)
+
+    try {
+      const project = await projectRepository.findById(job.projectId)
+      if (!project) throw new AppError(404, 'PROJECT_NOT_FOUND', 'Project not found')
+      const hasScenes = project.scenes.length > 0
+
+      if (hasScenes) {
+        await this.markStepSuccess(job, PipelineStep.DIRECTOR)
+        await this.markStepSuccess(job, PipelineStep.SCRIPT)
+        await this.markStepSuccess(job, PipelineStep.STORYBOARD)
+      } else {
+        await this.runStep(job, PipelineStep.DIRECTOR, async (onProgress) => {
+          await onProgress(50); await onProgress(100)
+        })
+        await this.runStep(job, PipelineStep.SCRIPT, async (onProgress) => {
+          await scriptService.generateScript({ projectId: job.projectId, skipCredits: true })
+          await onProgress(100)
+        })
+        await this.runStep(job, PipelineStep.STORYBOARD, async (onProgress) => {
+          await onProgress(100)
+        })
+      }
+
+      await this.runStep(job, PipelineStep.ASSET, async (onProgress) => {
+        await onProgress(10)
+        try { await assetPlannerService.autoFillProject(job.projectId) } catch { /* Pexels optional */ }
+        await onProgress(40)
+        await assetService.generateImagesForProject(job.projectId, (p) => void onProgress(40 + Math.round(p * 0.6)))
+        await onProgress(100)
+      })
+
+      await this.runStep(job, PipelineStep.TTS, async (onProgress) => {
+        await assetService.generateVoiceForProject(job.projectId, (p) => void onProgress(p))
+        await onProgress(100)
+      })
+
+      await this.runStep(job, PipelineStep.TIMELINE, async (onProgress) => {
+        await composeService.composeForProject(job.projectId, (p) => void onProgress(p))
+        await onProgress(100)
+      })
+
+      await this.runStep(job, PipelineStep.RENDER, async (onProgress) => {
+        const result = await renderService.startRenderAndWait(job.projectId, (p) => void onProgress(p))
+        if (result.renderId) {
+          await productionJobRepository.update(job.id, { renderId: result.renderId })
+          job.renderId = result.renderId
+        }
+        await onProgress(100)
+      })
+
+      // Review is optional, post-completion — does not block the task
+      try { await reviewService.reviewProject(job.projectId) } catch { /* review optional */ }
+
+      this.assertNotCancelled(job.projectId)
+      await productionJobRepository.update(job.id, {
+        stage: ProductionStage.COMPLETED, status: ProductionJobStatus.COMPLETED,
+        progress: 100, stageProgress: 100, completedAt: new Date(),
+      })
+      await projectRepository.update(job.projectId, { status: ProjectStatus.COMPLETED })
+      await this.emitEvent(job.projectId, 'completed', {
+        taskId: job.id, step: null, status: ProductionJobStatus.COMPLETED, progress: 100,
+        message: '生产流水线已完成',
+      })
+      await this.emitStatus(job.projectId)
+    } catch (error) {
+      if (error instanceof PipelineCancelledError) {
+        logger(`Production pipeline cancelled for ${job.projectId}`)
+        return
+      }
+      throw error
+    } finally {
+      this.runningJobs.delete(job.projectId)
+    }
+  }
+
+  async recoverOnBoot() {
+    const running = await productionJobRepository.findAllActive()
+    if (running.length === 0) return
+    logger(`Recovering ${running.length} interrupted production job(s)...`)
+    for (const job of running) {
+      await this.resetForResume(job, false)
+      const refreshed = await productionJobRepository.findById(job.id)
+      if (!refreshed) continue
+      logger(`Resuming job ${job.id} for project ${job.projectId} (attempt ${job.attempt})`)
+      this.runPipeline(refreshed as NonNullable<ProductionJob>).catch((e) => {
+        if (!(e instanceof PipelineCancelledError)) loggerError(`Recovered pipeline failed for ${job.projectId}`, e)
+      })
     }
   }
 
   async regenerateVoice(projectId: string, sceneId?: string) {
     const project = await projectRepository.findById(projectId)
     if (!project) throw new AppError(404, 'PROJECT_NOT_FOUND', 'Project not found')
-    if (project.scenes.length === 0) {
-      throw new AppError(400, 'NO_SCENES', '请先生成 AI 分镜后再配音')
-    }
-
+    if (project.scenes.length === 0) throw new AppError(400, 'NO_SCENES', '请先生成 AI 分镜后再配音')
     await assetService.generateVoiceForProject(projectId, undefined, { force: true, sceneId })
     return projectService.getProject(projectId)
   }
@@ -334,41 +433,9 @@ export class ProductionService {
   async generateImages(projectId: string, sceneId?: string) {
     const project = await projectRepository.findById(projectId)
     if (!project) throw new AppError(404, 'PROJECT_NOT_FOUND', 'Project not found')
-    if (project.scenes.length === 0) {
-      throw new AppError(400, 'NO_SCENES', '请先生成 AI 分镜')
-    }
-
-    await assetService.generateImagesForProject(projectId, undefined, {
-      sceneId,
-      force: Boolean(sceneId),
-    })
+    if (project.scenes.length === 0) throw new AppError(400, 'NO_SCENES', '请先生成 AI 分镜')
+    await assetService.generateImagesForProject(projectId, undefined, { sceneId, force: Boolean(sceneId) })
     return projectService.getProject(projectId)
-  }
-
-  async start(projectId: string, userId?: string) {
-    const project = await projectRepository.findById(projectId)
-    if (!project) throw new AppError(404, 'PROJECT_NOT_FOUND', 'Project not found')
-    if (project.scenes.length === 0) {
-      throw new AppError(400, 'NO_SCENES', '请先生成 AI 分镜后再开始渲染')
-    }
-
-    const cost = config.workspace.productionCost
-    const deduction = await creditsService.deduct(cost, 'production_pipeline', userId)
-
-    await projectRepository.update(projectId, { status: ProjectStatus.GENERATING })
-
-    let tasks = await this.ensurePipelineTasks(projectId, true)
-    const scriptTask = tasks.find((t) => t.type === TaskType.SCRIPT)
-    if (scriptTask && scriptTask.status !== TaskStatus.SUCCESS) {
-      await taskRepository.update(scriptTask.id, { status: TaskStatus.SUCCESS, progress: 100 })
-    }
-
-    void this.runPipeline(projectId).catch((error) => {
-      loggerError(`Production pipeline failed for ${projectId}`, error)
-    })
-
-    const status = await this.getStatus(projectId, false)
-    return { ...status, creditsDeducted: deduction.deducted, creditsBalance: deduction.balance }
   }
 }
 

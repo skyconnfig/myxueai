@@ -1,0 +1,33 @@
+{
+  "name": "产品种草 60秒",
+  "slug": "product",
+  "composition": "VideoComposition",
+  "duration": 60,
+  "ratio": "9:16",
+  "fps": 30,
+  "meta": { "id": "product", "title": "产品种草", "templateSlug": "product", "version": 1 },
+  "style": {
+    "accentColor": "#FB923C",
+    "captionColor": "#FFF7ED",
+    "captionFont": "'PingFang SC', 'Inter', sans-serif",
+    "captionFontSize": 40,
+    "captionWeight": 800,
+    "backgroundColor": "#0A0A0A",
+    "bgmCategory": "climax",
+    "bgmVolume": 0.2,
+    "visualStyle": "commercial product photography, studio lighting, macro detail, premium texture, advertising quality",
+    "defaultTransition": "cut",
+    "cameraFamily": "dolly",
+    "subtitleStyle": "bold",
+    "emphasizeNumbers": true
+  },
+  "sceneBlueprint": [
+    { "order": 1, "purpose": "hook", "component": "cinematic_still", "durationRatio": 0.1, "camera": { "shotType": "macro", "type": "dolly_in", "speed": 0.6 }, "transition": "cut", "bgmIntensity": "high", "voiceHint": "产品惊艳瞬间" },
+    { "order": 2, "purpose": "context", "component": "cinematic_still", "durationRatio": 0.14, "camera": { "shotType": "medium", "type": "pan_right", "speed": 0.4 }, "transition": "cut", "bgmIntensity": "medium", "voiceHint": "使用场景" },
+    { "order": 3, "purpose": "problem", "component": "cinematic_still", "durationRatio": 0.16, "camera": { "shotType": "close_up", "type": "static", "speed": 0.3 }, "transition": "cut", "bgmIntensity": "medium", "voiceHint": "用户痛点" },
+    { "order": 4, "purpose": "insight", "component": "cinematic_still", "durationRatio": 0.18, "camera": { "shotType": "macro", "type": "dolly_in", "speed": 0.5 }, "transition": "cut", "bgmIntensity": "medium", "voiceHint": "产品亮点" },
+    { "order": 5, "purpose": "demo", "component": "ProductDemo", "durationRatio": 0.24, "camera": { "shotType": "over_shoulder", "type": "dolly_in", "speed": 0.5 }, "transition": "slide", "bgmIntensity": "medium", "voiceHint": "使用演示" },
+    { "order": 6, "purpose": "result", "component": "BeforeAfter", "durationRatio": 0.14, "camera": { "shotType": "medium", "type": "static", "speed": 0.3 }, "transition": "cut", "bgmIntensity": "high", "voiceHint": "效果对比" },
+    { "order": 7, "purpose": "cta", "component": "CTA", "durationRatio": 0.04, "camera": { "shotType": "close_up", "type": "static", "speed": 0.3 }, "transition": "fade", "bgmIntensity": "swell", "voiceHint": "立即下单" }
+  ]
+}

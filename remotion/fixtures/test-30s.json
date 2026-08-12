@@ -1,0 +1,74 @@
+{
+  "duration": 30,
+  "ratio": "9:16",
+  "width": 1080,
+  "height": 1920,
+  "fps": 30,
+  "composition": {
+    "meta": { "id": "test-30s", "title": "30s Quality Test", "templateSlug": "tech", "version": 1 },
+    "fps": 30,
+    "width": 1080,
+    "height": 1920,
+    "ratio": "9:16",
+    "duration": 30,
+    "scenes": [
+      {
+        "id": "s1", "order": 1, "purpose": "hook", "component": "CinematicFallback",
+        "duration": 7, "transition": "cut",
+        "camera": { "shotType": "close_up", "type": "zoom_in", "speed": 0.6, "lighting": "neon practical lights, dark premium" },
+        "caption": { "text": "为什么90%的人学AI，最后都放弃了？", "style": { "color": "#F8FAFC", "fontSize": 40, "highlightColor": "#22D3EE", "fontWeight": 800 }, "highlightWords": ["90%"] },
+        "audio": { "bgmIntensity": "high" },
+        "media": { "image": "https://images.unsplash.com/photo-1518770660439-4636190af475?w=1080&h=1920&fit=crop", "mediaType": "image" },
+        "meta": { "emotion": "curiosity", "storyBeat": "hook" },
+        "props": { "subtitleCues": [
+          { "startSec": 0.12, "endSec": 2.5, "text": "为什么90%的人", "highlightWords": ["90%"] },
+          { "startSec": 2.5, "endSec": 4.6, "text": "学AI最后", "highlightWords": [] },
+          { "startSec": 4.6, "endSec": 7.0, "text": "都放弃了？", "highlightWords": [] }
+        ] }
+      },
+      {
+        "id": "s2", "order": 2, "purpose": "problem", "component": "CinematicFallback",
+        "duration": 8, "transition": "slide",
+        "camera": { "shotType": "over_shoulder", "type": "dolly_in", "speed": 0.5, "lighting": "warm desk lamp, soft shadows" },
+        "caption": { "text": "因为他们一直在收藏教程，却从没真正动手做过一个项目。", "style": { "color": "#FFFBEB", "fontSize": 38, "highlightColor": "#FBBF24", "fontWeight": 700 } },
+        "audio": { "bgmIntensity": "medium" },
+        "media": { "image": "https://images.unsplash.com/photo-1551434678-e076c223a692?w=1080&h=1920&fit=crop", "mediaType": "image" },
+        "meta": { "emotion": "stress", "storyBeat": "problem" },
+        "props": { "subtitleCues": [
+          { "startSec": 0.12, "endSec": 2.8, "text": "因为他们一直在收藏教程" },
+          { "startSec": 2.8, "endSec": 5.4, "text": "却从没真正动手" },
+          { "startSec": 5.4, "endSec": 8.0, "text": "做过一个项目" }
+        ] }
+      },
+      {
+        "id": "s3", "order": 3, "purpose": "insight", "component": "CinematicFallback",
+        "duration": 8, "transition": "zoom",
+        "camera": { "shotType": "wide", "type": "parallax", "speed": 0.5, "lighting": "golden hour, natural" },
+        "caption": { "text": "真正学会AI的人，只做一件事：用真实问题驱动学习。", "style": { "color": "#FFF7ED", "fontSize": 38, "highlightColor": "#FB923C", "fontWeight": 700 } },
+        "audio": { "bgmIntensity": "medium" },
+        "media": { "image": "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=1080&h=1920&fit=crop", "mediaType": "image" },
+        "meta": { "emotion": "confidence", "storyBeat": "insight" },
+        "props": { "subtitleCues": [
+          { "startSec": 0.12, "endSec": 2.8, "text": "真正学会AI的人" },
+          { "startSec": 2.8, "endSec": 5.4, "text": "只做一件事：" },
+          { "startSec": 5.4, "endSec": 8.0, "text": "用真实问题驱动学习" }
+        ] }
+      },
+      {
+        "id": "s4", "order": 4, "purpose": "cta", "component": "CinematicFallback",
+        "duration": 7, "transition": "fade",
+        "camera": { "shotType": "medium", "type": "static", "speed": 0.3, "lighting": "soft studio" },
+        "caption": { "text": "关注我，下一个视频带你从0做出第一个AI项目。", "style": { "color": "#FFF1F2", "fontSize": 40, "highlightColor": "#F472B6", "fontWeight": 800 } },
+        "audio": { "bgmIntensity": "swell" },
+        "media": { "image": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1080&h=1920&fit=crop", "mediaType": "image" },
+        "meta": { "emotion": "success", "storyBeat": "cta" },
+        "props": { "subtitleCues": [
+          { "startSec": 0.12, "endSec": 2.6, "text": "关注我，" },
+          { "startSec": 2.6, "endSec": 5.0, "text": "下一个视频带你" },
+          { "startSec": 5.0, "endSec": 7.0, "text": "做出第一个AI项目" }
+        ] }
+      }
+    ],
+    "audio": {}
+  }
+}

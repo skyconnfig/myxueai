@@ -34,8 +34,13 @@ export class RenderRepository {
   update(id: string, data: {
     status?: string
     outputUrl?: string | null
+    outputPath?: string | null
+    outputHash?: string | null
+    durationMs?: number | null
+    fileSizeBytes?: number | null
     progress?: number
     error?: string | null
+    completedAt?: Date | null
   }) {
     return prisma.render.update({ where: { id }, data })
   }

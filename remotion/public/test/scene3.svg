@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0A0A0A"/>
+      <stop offset="1" stop-color="#7C2D12"/>
+    </linearGradient>
+  </defs>
+  <rect width="1080" height="1920" fill="url(#g)"/>
+  <polygon points="540,520 820,1040 260,1040" fill="#FB923C" opacity="0.85"/>
+  <text x="540" y="1500" font-family="sans-serif" font-size="64" fill="#FFF7ED" text-anchor="middle" font-weight="700">SCENE 3  INSIGHT</text>
+</svg>
