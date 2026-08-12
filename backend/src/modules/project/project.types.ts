@@ -57,7 +57,7 @@ export const updateSceneSchema = z.object({
 })
 
 export const storyArcBeatSchema = z.object({
-  type: z.enum(['pain', 'solution', 'result', 'cta']),
+  type: z.enum(['hook', 'problem', 'pain', 'solution', 'result', 'cta']),
   duration: z.number().int().positive(),
   label: z.string().optional(),
   beat: z.string().optional(),
@@ -83,6 +83,45 @@ export const cinematicSceneFieldsSchema = z.object({
   transition: z.string().optional(),
   sceneType: z.string().optional(),
   bgmIntensity: z.string().optional(),
+  // ── Director-level Scene JSON (AI Director upgrade) ──────────────────────
+  shot: z.object({
+    type: z.string().optional(),
+    camera: z.string().optional(),
+    speed: z.number().min(0).max(1).optional(),
+    intensity: z.number().min(0).max(1).optional(),
+  }).optional(),
+  visualLayer: z.object({
+    background: z.string().optional(),
+    foreground: z.string().optional(),
+    overlay: z.string().optional(),
+  }).optional(),
+  motion: z.object({
+    camera: z.string().optional(),
+    effect: z.string().optional(),
+  }).optional(),
+  audio: z.object({
+    sfx: z.string().optional(),
+  }).optional(),
+  captionStyle: z.object({
+    preset: z.enum(['tech', 'documentary', 'commercial']).optional(),
+    animation: z.enum(['scale', 'fade', 'spring', 'highlight']).optional(),
+    kinetic: z.boolean().optional(),
+  }).optional(),
+  // Product Demo v2 — cinematic device choreography props
+  productDemo: z.object({
+    device: z.enum(['browser', 'phone', 'both']).optional(),
+    features: z.array(z.object({
+      index: z.number().int().positive(),
+      x: z.number().min(0).max(1),
+      y: z.number().min(0).max(1),
+      label: z.string(),
+    })).optional(),
+    metric: z.object({
+      label: z.string(),
+      value: z.number(),
+      suffix: z.string().optional(),
+    }).optional(),
+  }).optional(),
 })
 
 export const uiStepSchema = z.object({

@@ -4,6 +4,7 @@ import { TransitionSeries } from '@remotion/transitions'
 import type { VideoCompositionJSON } from '@xueai/shared'
 import { calculateCompositionFrames } from '@xueai/shared'
 import { CompositionAudio } from '../audio/CompositionAudio.js'
+import { AudioEngine } from '../audio/AudioEngine.js'
 import { buildDuckingPlan } from '../audio/ducking.js'
 import { getTransitionPresentation, getTransitionTiming } from './TransitionEngine.js'
 import { buildSceneTimeline, secToFrames } from './TimelineEngine.js'
@@ -70,7 +71,11 @@ export const CompositionManager: React.FC<CompositionManagerProps> = ({ composit
 
   return (
     <AbsoluteFill style={{ backgroundColor: '#05070A' }}>
-      <CompositionAudio audio={composition.audio} duckingPlan={duckingPlan} />
+      {composition.audio?.audio?.length ? (
+        <AudioEngine composition={composition} sceneTimeline={timeline} />
+      ) : (
+        <CompositionAudio audio={composition.audio} duckingPlan={duckingPlan} />
+      )}
       <TransitionSeries>{elements}</TransitionSeries>
     </AbsoluteFill>
   )

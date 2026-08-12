@@ -1,0 +1,106 @@
+{
+  "duration": 30,
+  "ratio": "9:16",
+  "width": 1080,
+  "height": 1920,
+  "fps": 30,
+  "composition": {
+    "meta": { "id": "test-target-30s", "title": "目标成片结构 30s", "templateSlug": "tech", "version": 1 },
+    "fps": 30,
+    "width": 1080,
+    "height": 1920,
+    "ratio": "9:16",
+    "duration": 30,
+    "scenes": [
+      {
+        "id": "hook", "order": 1, "purpose": "hook", "component": "CinematicFallback",
+        "duration": 3, "transition": "cut",
+        "shot": { "type": "close", "camera": "push_in", "speed": 0.6, "intensity": 0.85 },
+        "visualLayer": { "background": "dark studio with neon rim light", "foreground": "developer silhouette facing glowing screen", "overlay": "lens bloom, light streaks, film grain" },
+        "motion": { "camera": "fast push-in with subtle handheld shake", "effect": "light bloom pulsing on highlight" },
+        "camera": { "shotType": "close_up", "type": "zoom_in", "speed": 0.6, "lighting": "neon rim light, dark studio" },
+        "caption": { "text": "AI 正在改写规则", "kinetic": true, "preset": "tech", "animation": "spring", "style": { "fontSize": 64, "color": "#ffffff", "highlightColor": "#22D3EE", "fontWeight": 800 } },
+        "audio": { "bgmIntensity": "high" },
+        "media": { "image": "https://images.unsplash.com/photo-1518770660439-4636190af475?w=1080&h=1920&fit=crop", "mediaType": "image" },
+        "meta": { "emotion": "curiosity", "storyBeat": "hook" },
+        "props": { "subtitleCues": [ { "startSec": 0.1, "endSec": 3.0, "text": "AI 正在改写规则", "highlightWords": ["AI", "规则"] } ] }
+      },
+      {
+        "id": "problem", "order": 2, "purpose": "problem", "component": "CinematicFallback",
+        "duration": 5, "transition": "cut",
+        "shot": { "type": "medium", "camera": "handheld", "speed": 0.4, "intensity": 0.6 },
+        "visualLayer": { "background": "cluttered office at night, papers everywhere", "foreground": "tired operator rubbing temples at laptop", "overlay": "cold fluorescent flicker, shallow depth of field" },
+        "motion": { "camera": "handheld micro-shake, slight drift", "effect": "screen glare flickering on face" },
+        "camera": { "shotType": "medium", "type": "handheld", "speed": 0.4, "lighting": "cold fluorescent office at night" },
+        "caption": { "text": "凌晨3点 还在手动跑报表", "kinetic": true, "preset": "documentary", "animation": "highlight", "style": { "fontSize": 44, "color": "#ffffff", "highlightColor": "#F87171", "fontWeight": 700 } },
+        "audio": { "bgmIntensity": "low" },
+        "media": { "image": "https://images.unsplash.com/photo-1521791136064-7986c2920216?w=1080&h=1920&fit=crop", "mediaType": "image" },
+        "meta": { "emotion": "stress", "storyBeat": "problem" },
+        "props": { "subtitleCues": [ { "startSec": 0.1, "endSec": 5.0, "text": "凌晨3点 还在手动跑报表", "highlightWords": ["凌晨3点", "手动"] } ] }
+      },
+      {
+        "id": "solution-1", "order": 3, "purpose": "solution", "component": "CinematicFallback",
+        "duration": 6, "transition": "cut",
+        "shot": { "type": "medium", "camera": "push_in", "speed": 0.45, "intensity": 0.6 },
+        "visualLayer": { "background": "clean modern desk, laptop with dashboard", "foreground": "hands on keyboard, dashboard on screen", "overlay": "soft UI glow, cursor highlight" },
+        "motion": { "camera": "slow push-in toward screen", "effect": "UI elements lighting up sequentially" },
+        "camera": { "shotType": "medium", "type": "zoom_in", "speed": 0.45, "lighting": "warm desk lamp + screen glow" },
+        "caption": { "text": "一键自动化 全流程跑通", "kinetic": true, "preset": "tech", "animation": "spring", "style": { "fontSize": 42, "color": "#ffffff", "highlightColor": "#22D3EE", "fontWeight": 700 } },
+        "audio": { "bgmIntensity": "medium" },
+        "media": { "image": "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1080&h=1920&fit=crop", "mediaType": "image" },
+        "meta": { "emotion": "confidence", "storyBeat": "solution" },
+        "props": { "subtitleCues": [ { "startSec": 0.1, "endSec": 6.0, "text": "一键自动化 全流程跑通", "highlightWords": ["一键", "自动化"] } ] }
+      },
+      {
+        "id": "solution-2", "order": 4, "purpose": "solution", "component": "CinematicFallback",
+        "duration": 6, "transition": "cut",
+        "shot": { "type": "close", "camera": "parallax", "speed": 0.4, "intensity": 0.65 },
+        "visualLayer": { "background": "blurred office bokeh", "foreground": "dashboard UI with charts updating", "overlay": "data particles, depth parallax layers" },
+        "motion": { "camera": "parallax drift between layers", "effect": "charts animating upward, numbers ticking" },
+        "camera": { "shotType": "close_up", "type": "parallax", "speed": 0.4, "lighting": "screen glow, dark room" },
+        "caption": { "text": "AI 接管 重复工作消失", "kinetic": true, "preset": "tech", "animation": "fade", "style": { "fontSize": 42, "color": "#ffffff", "highlightColor": "#A78BFA", "fontWeight": 700 } },
+        "audio": { "bgmIntensity": "medium" },
+        "media": { "image": "https://images.unsplash.com/photo-1460925895916-93654f793d23?w=1080&h=1920&fit=crop", "mediaType": "image" },
+        "meta": { "emotion": "confidence", "storyBeat": "solution" },
+        "props": { "subtitleCues": [ { "startSec": 0.1, "endSec": 6.0, "text": "AI 接管 重复工作消失", "highlightWords": ["AI", "接管"] } ] }
+      },
+      {
+        "id": "result", "order": 5, "purpose": "result", "component": "CinematicFallback",
+        "duration": 7, "transition": "cut",
+        "shot": { "type": "close", "camera": "push_in", "speed": 0.5, "intensity": 0.7 },
+        "visualLayer": { "background": "bright modern office, morning light", "foreground": "dashboard showing 300% growth chart", "overlay": "rising particles, light rays, data glow" },
+        "motion": { "camera": "push-in on growth chart", "effect": "chart line rising, numbers counting up, particles ascending" },
+        "camera": { "shotType": "close_up", "type": "zoom_in", "speed": 0.5, "lighting": "bright morning office light" },
+        "caption": { "text": "效率提升 300% 团队减半", "kinetic": true, "preset": "commercial", "animation": "scale", "emphasizeNumbers": true, "style": { "fontSize": 50, "color": "#ffffff", "highlightColor": "#FBBF24", "fontWeight": 800 } },
+        "audio": { "bgmIntensity": "swell" },
+        "media": { "image": "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1080&h=1920&fit=crop", "mediaType": "image" },
+        "meta": { "emotion": "success", "storyBeat": "result" },
+        "props": { "subtitleCues": [ { "startSec": 0.1, "endSec": 7.0, "text": "效率提升 300% 团队减半", "highlightWords": ["300%", "减半"] } ] }
+      },
+      {
+        "id": "cta", "order": 6, "purpose": "cta", "component": "CinematicFallback",
+        "duration": 3, "transition": "cut",
+        "shot": { "type": "medium", "camera": "push_in", "speed": 0.55, "intensity": 0.75 },
+        "visualLayer": { "background": "premium dark gradient with brand glow", "foreground": "abstract product hero shape", "overlay": "lens flare, light sweep, cinematic vignette" },
+        "motion": { "camera": "steady push-in", "effect": "light sweep across frame, brand glow pulsing" },
+        "camera": { "shotType": "medium", "type": "zoom_in", "speed": 0.55, "lighting": "premium brand lighting, dark gradient" },
+        "caption": { "text": "立即开启 你的 AI 工作流", "kinetic": true, "preset": "commercial", "animation": "scale", "style": { "fontSize": 56, "color": "#ffffff", "highlightColor": "#22D3EE", "fontWeight": 800 } },
+        "audio": { "bgmIntensity": "high" },
+        "media": { "image": "https://images.unsplash.com/photo-1620712943543-bcc4688e0f9a?w=1080&h=1920&fit=crop", "mediaType": "image" },
+        "meta": { "emotion": "confidence", "storyBeat": "cta" },
+        "props": { "subtitleCues": [ { "startSec": 0.1, "endSec": 3.0, "text": "立即开启 你的 AI 工作流", "highlightWords": ["立即", "AI"] } ] }
+      }
+    ],
+    "audio": {
+      "backgroundMusic": { "url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3", "volume": 0.26 },
+      "audio": [
+        { "type": "impact", "time": 0.3 },
+        { "type": "whoosh", "time": 3.0 },
+        { "type": "click", "time": 8.5 },
+        { "type": "click", "time": 11.0 },
+        { "type": "riser", "time": 20.0 },
+        { "type": "boom", "time": 27.0 }
+      ]
+    }
+  }
+}

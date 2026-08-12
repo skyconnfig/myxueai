@@ -1,0 +1,46 @@
+{
+  "duration": 10,
+  "ratio": "9:16",
+  "width": 1080,
+  "height": 1920,
+  "fps": 30,
+  "composition": {
+    "meta": { "id": "test-shot-engine", "title": "Shot Engine 10s Test", "templateSlug": "tech", "version": 1 },
+    "fps": 30,
+    "width": 1080,
+    "height": 1920,
+    "ratio": "9:16",
+    "duration": 10,
+    "scenes": [
+      {
+        "id": "s1", "order": 1, "purpose": "hook", "component": "CinematicFallback",
+        "duration": 5, "transition": "cut",
+        "shot": { "type": "establishing", "camera": "push_in", "intensity": 0.8 },
+        "camera": { "shotType": "wide", "type": "push_in", "speed": 0.6, "lighting": "neon practical lights, dark premium" },
+        "caption": { "text": "为什么90%的人学AI，最后都放弃了？", "style": { "color": "#F8FAFC", "fontSize": 40, "highlightColor": "#22D3EE", "fontWeight": 800 }, "highlightWords": ["90%"] },
+        "audio": { "bgmIntensity": "high" },
+        "media": { "image": "https://images.unsplash.com/photo-1518770660439-4636190af475?w=1080&h=1920&fit=crop", "mediaType": "image" },
+        "meta": { "emotion": "curiosity", "storyBeat": "hook" },
+        "props": { "subtitleCues": [
+          { "startSec": 0.12, "endSec": 2.5, "text": "为什么90%的人", "highlightWords": ["90%"] },
+          { "startSec": 2.5, "endSec": 5.0, "text": "学AI都放弃了？", "highlightWords": [] }
+        ] }
+      },
+      {
+        "id": "s2", "order": 2, "purpose": "insight", "component": "CinematicFallback",
+        "duration": 5, "transition": "cut",
+        "shot": { "type": "close", "camera": "orbit", "intensity": 0.7 },
+        "camera": { "shotType": "close_up", "type": "orbit", "speed": 0.5, "lighting": "warm desk lamp, cinematic" },
+        "caption": { "text": "因为你把学知识，当成了用知识。", "style": { "color": "#FFFBEB", "fontSize": 38, "highlightColor": "#FBBF24", "fontWeight": 700 } },
+        "audio": { "bgmIntensity": "medium" },
+        "media": { "image": "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=1080&h=1920&fit=crop", "mediaType": "image" },
+        "meta": { "emotion": "confidence", "storyBeat": "insight" },
+        "props": { "subtitleCues": [
+          { "startSec": 0.12, "endSec": 2.5, "text": "因为你把学知识", "highlightWords": [] },
+          { "startSec": 2.5, "endSec": 5.0, "text": "当成了用知识", "highlightWords": [] }
+        ] }
+      }
+    ],
+    "audio": {}
+  }
+}

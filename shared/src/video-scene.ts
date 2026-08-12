@@ -3,6 +3,7 @@ export type SceneComponentName =
   | 'cinematic_still'
   | 'broll_video'
   | 'ProductDemo'
+  | 'ProductDemoV2'
   | 'BrowserWindow'
   | 'DashboardAnimation'
   | 'FeatureReveal'
@@ -35,6 +36,15 @@ export interface SceneCaptionConfig {
   emphasisWords?: string[]
   /** numbers in text to emphasize */
   emphasizeNumbers?: boolean
+  /**
+   * Caption Engine 2.0 — kinetic typography mode. When true, subtitles render
+   * word-by-word with keyword animations instead of a static line.
+   */
+  kinetic?: boolean
+  /** style preset driving font / color / treatment */
+  preset?: 'tech' | 'documentary' | 'commercial'
+  /** keyword animation type for highlighted tokens */
+  animation?: 'scale' | 'fade' | 'spring' | 'highlight'
 }
 
 export interface SceneAudioConfig {
@@ -50,10 +60,44 @@ export interface SceneAudioConfig {
   bgmIntensity?: string
 }
 
+/**
+ * Shot Engine config — drives multi-sub-shot cinematography within a scene.
+ * When present, the Shot Engine splits the scene into several sub-shots with
+ * varying framing, camera movement and focus points, producing real camera
+ * language instead of a single static image zoom.
+ */
+export interface ShotConfig {
+  /** shot framing */
+  type?: 'establishing' | 'wide' | 'medium' | 'close' | 'macro' | 'detail'
+  /** camera movement */
+  camera?: 'push_in' | 'pull_out' | 'pan_left' | 'pan_right' | 'orbit' | 'handheld' | 'parallax'
+  /** movement speed 0-1 (default 0.5) */
+  speed?: number
+  /** movement intensity 0-1 (default 0.6) */
+  intensity?: number
+}
+
 export interface VideoSceneMedia {
   image?: string
   video?: string
   mediaType?: 'image' | 'video' | 'both'
+}
+
+/**
+ * Director-level visual layer — three-layer composite for cinematic depth.
+ * Driven by the AI Director's `visualLayer` block; consumed by the Scene Engine
+ * to render layered backgrounds/foregrounds/overlays instead of a flat image.
+ */
+export interface VideoSceneVisualLayer {
+  background?: string
+  foreground?: string
+  overlay?: string
+}
+
+/** Director-level motion block — camera movement + in-frame effect descriptions. */
+export interface VideoSceneMotion {
+  camera?: string
+  effect?: string
 }
 
 export interface VideoSceneMeta {
@@ -76,6 +120,12 @@ export interface VideoScene {
   animation?: AnimationConfig
   caption?: SceneCaptionConfig
   audio?: SceneAudioConfig
+  /** Shot Engine config — drives multi-sub-shot cinematography */
+  shot?: ShotConfig
+  /** Director-level visual layer — three-layer composite for cinematic depth */
+  visualLayer?: VideoSceneVisualLayer
+  /** Director-level motion — camera movement + in-frame effect */
+  motion?: VideoSceneMotion
   props?: Record<string, unknown>
   media?: VideoSceneMedia
   meta?: VideoSceneMeta
@@ -87,6 +137,7 @@ export function normalizeComponentName(componentType?: string | null): string {
     cinematic_still: 'CinematicFallback',
     broll_video: 'CinematicFallback',
     product_demo: 'ProductDemo',
+    product_demo_v2: 'ProductDemoV2',
     browser_window: 'BrowserWindow',
     ui_demo: 'BrowserWindow',
   }

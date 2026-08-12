@@ -26,18 +26,19 @@ export function buildDirectorPrompt(input: {
   "audience": "目标受众描述",
   "goal": "视频商业目标",
   "story_arc": [
-    { "type": "pain", "duration": 6, "beat": "具体可拍摄的情境，如运营凌晨还在整理 Excel" },
-    { "type": "solution", "duration": 14, "beat": "产品如何解决问题" },
-    { "type": "result", "duration": 8, "beat": "使用后的积极结果" },
-    { "type": "cta", "duration": 4, "beat": "行动号召时刻" }
+    { "type": "hook", "duration": 3, "beat": "强钩子：可拍摄的具体情境，如运营凌晨盯着报警仪表盘" },
+    { "type": "problem", "duration": 5, "beat": "痛点场景：具体可拍摄的困境" },
+    { "type": "solution", "duration": 12, "beat": "产品如何解决问题（含 UI 演示）" },
+    { "type": "result", "duration": 7, "beat": "使用后的积极结果（数据增长/案例）" },
+    { "type": "cta", "duration": 3, "beat": "行动号召时刻" }
   ],
   "negative_global": "全局 negative prompt"
 }
 
 要求：
-- story_arc 必须包含 pain → solution → result 叙事弧，可选 cta
+- story_arc 必须遵循 hook → problem → solution → result → cta 五拍叙事弧
+- 各拍 duration 之和应接近 ${input.duration ?? 30} 秒，比例参考：hook 10% / problem 17% / solution 40% / result 23% / cta 10%
 - 每个 beat 必须是**可拍摄的具体情境**，禁止抽象标题（如「黄金30秒视觉钩子」）
 - beat 与 visual 均不得要求画面内出现可读文字、屏幕文案或 Logo 字样（CTA 用人物手势/产品氛围表达，文字由后期叠加）
-- story_arc 各段 duration 之和应接近 ${input.duration ?? 30} 秒
 - negative_global 应包含：${COMMERCIAL_NEGATIVE_PROMPT}`
 }

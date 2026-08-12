@@ -1,0 +1,47 @@
+{
+  "duration": 10,
+  "ratio": "9:16",
+  "width": 1080,
+  "height": 1920,
+  "fps": 30,
+  "composition": {
+    "meta": { "id": "test-director-upgrade", "title": "AI Director Upgrade 10s", "templateSlug": "tech", "version": 1 },
+    "fps": 30,
+    "width": 1080,
+    "height": 1920,
+    "ratio": "9:16",
+    "duration": 10,
+    "scenes": [
+      {
+        "id": "s1", "order": 1, "purpose": "hook", "component": "CinematicFallback",
+        "duration": 5, "transition": "cut",
+        "shot": { "type": "close", "camera": "push_in", "speed": 0.5, "intensity": 0.8 },
+        "visualLayer": { "background": "dim office neon", "foreground": "developer face", "overlay": "bloom grain" },
+        "motion": { "camera": "slow push-in handheld", "effect": "light bloom" },
+        "camera": { "shotType": "close_up", "type": "zoom_in", "speed": 0.5, "lighting": "neon practical lights" },
+        "caption": { "text": "AI正在改变未来", "kinetic": true, "preset": "tech", "animation": "spring", "style": { "fontSize": 48, "highlightColor": "#22D3EE" } },
+        "audio": { "bgmIntensity": "high" },
+        "media": { "image": "https://images.unsplash.com/photo-1518770660439-4636190af475?w=1080&h=1920&fit=crop", "mediaType": "image" },
+        "meta": { "emotion": "curiosity", "storyBeat": "hook" },
+        "props": { "subtitleCues": [ { "startSec": 0.12, "endSec": 5.0, "text": "AI正在改变未来", "highlightWords": ["AI", "未来"] } ] }
+      },
+      {
+        "id": "s2", "order": 2, "purpose": "insight", "component": "CinematicFallback",
+        "duration": 5, "transition": "cut",
+        "shot": { "type": "medium", "camera": "orbit", "speed": 0.4, "intensity": 0.6 },
+        "visualLayer": { "background": "warm desk", "foreground": "hands on keyboard", "overlay": "dust particles" },
+        "motion": { "camera": "orbit around subject", "effect": "particles drifting" },
+        "camera": { "shotType": "medium", "type": "orbit", "speed": 0.4, "lighting": "warm desk lamp" },
+        "caption": { "text": "90%的人学不会", "kinetic": true, "preset": "documentary", "animation": "highlight", "style": { "fontSize": 42, "highlightColor": "#FBBF24" } },
+        "audio": { "bgmIntensity": "medium" },
+        "media": { "image": "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=1080&h=1920&fit=crop", "mediaType": "image" },
+        "meta": { "emotion": "confidence", "storyBeat": "insight" },
+        "props": { "subtitleCues": [ { "startSec": 0.12, "endSec": 5.0, "text": "90%的人学不会", "highlightWords": ["90%"] } ] }
+      }
+    ],
+    "audio": {
+      "backgroundMusic": { "url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3", "volume": 0.28 },
+      "audio": [ { "type": "impact", "time": 0.5 }, { "type": "whoosh", "time": 5.0 }, { "type": "riser", "time": 8.0 } ]
+    }
+  }
+}

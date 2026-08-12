@@ -1,0 +1,70 @@
+{
+  "duration": 10,
+  "ratio": "9:16",
+  "width": 1080,
+  "height": 1920,
+  "fps": 30,
+  "composition": {
+    "meta": { "id": "test-product-demo-v2", "title": "Product Demo v2 10s", "templateSlug": "tech", "version": 1 },
+    "fps": 30,
+    "width": 1080,
+    "height": 1920,
+    "ratio": "9:16",
+    "duration": 10,
+    "scenes": [
+      {
+        "id": "hook", "order": 1, "purpose": "hook", "component": "CinematicFallback",
+        "duration": 3, "transition": "cut",
+        "shot": { "type": "close", "camera": "push_in", "speed": 0.6, "intensity": 0.8 },
+        "visualLayer": { "background": "dark studio neon", "foreground": "developer at screen", "overlay": "lens bloom" },
+        "camera": { "shotType": "close_up", "type": "zoom_in", "speed": 0.6, "lighting": "neon rim light" },
+        "caption": { "text": "AI 工作流 一键开启", "kinetic": true, "preset": "tech", "animation": "spring", "style": { "fontSize": 56, "highlightColor": "#22D3EE" } },
+        "audio": { "bgmIntensity": "high" },
+        "media": { "image": "https://images.unsplash.com/photo-1518770660439-4636190af475?w=1080&h=1920&fit=crop", "mediaType": "image" },
+        "meta": { "emotion": "curiosity", "storyBeat": "hook" },
+        "props": { "subtitleCues": [ { "startSec": 0.1, "endSec": 3.0, "text": "AI 工作流 一键开启", "highlightWords": ["AI", "一键"] } ] }
+      },
+      {
+        "id": "solution", "order": 2, "purpose": "solution", "component": "ProductDemoV2",
+        "duration": 7, "transition": "cut",
+        "shot": { "type": "medium", "camera": "push_in", "speed": 0.45, "intensity": 0.65 },
+        "visualLayer": { "background": "clean modern desk warm light", "foreground": "dashboard UI with charts", "overlay": "soft UI glow particles" },
+        "motion": { "camera": "slow push-in toward screen", "effect": "UI elements lighting up" },
+        "camera": { "shotType": "medium", "type": "zoom_in", "speed": 0.45, "lighting": "warm desk lamp + screen glow" },
+        "caption": { "text": "自动流转 实时看板", "kinetic": true, "preset": "tech", "animation": "spring", "style": { "fontSize": 40, "highlightColor": "#22D3EE" } },
+        "audio": { "bgmIntensity": "medium" },
+        "media": { "image": "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1080&h=1920&fit=crop", "mediaType": "image" },
+        "meta": { "emotion": "confidence", "storyBeat": "solution" },
+        "props": {
+          "title": "AI Workflow Dashboard",
+          "subtitle": "一键自动化 全流程跑通",
+          "url": "app.demo/dashboard",
+          "device": "browser",
+          "theme": "dark",
+          "steps": [
+            { "at": 0.4, "action": "move", "x": 0.35, "y": 0.42, "target": "nav-dashboard" },
+            { "at": 1.5, "action": "click", "target": "btn-automation" },
+            { "at": 3.0, "action": "navigate", "value": "Workflow" },
+            { "at": 5.0, "action": "dataChange", "target": "metric-primary", "value": 300 }
+          ],
+          "features": [
+            { "index": 1, "x": 0.3, "y": 0.32, "label": "一键启动" },
+            { "index": 2, "x": 0.68, "y": 0.5, "label": "自动流转" },
+            { "index": 3, "x": 0.42, "y": 0.72, "label": "实时看板" }
+          ],
+          "metric": { "label": "效率提升", "value": 300, "suffix": "%" },
+          "subtitleCues": [ { "startSec": 0.1, "endSec": 7.0, "text": "自动流转 实时看板", "highlightWords": ["自动", "实时"] } ]
+        }
+      }
+    ],
+    "audio": {
+      "backgroundMusic": { "url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3", "volume": 0.24 },
+      "audio": [
+        { "type": "impact", "time": 0.3 },
+        { "type": "whoosh", "time": 3.0 },
+        { "type": "click", "time": 4.5 },
+        { "type": "riser", "time": 8.0 }
+      ]
+    }
+  }
+}

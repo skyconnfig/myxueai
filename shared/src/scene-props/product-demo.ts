@@ -19,6 +19,36 @@ export interface ProductDemoProps {
   theme?: 'dark' | 'light'
 }
 
+/**
+ * Product Demo v2 — cinematic product demo props.
+ * Drives the multi-phase commercial hero shot: device choreography, feature
+ * callouts and a dramatic data punch.
+ */
+export interface ProductDemoFeatureCallout {
+  /** 1-based index shown in the badge */
+  index: number
+  /** normalized 0-1 position on the screen area */
+  x: number
+  y: number
+  /** short label drawn beside the badge */
+  label: string
+}
+
+export interface ProductDemoMetric {
+  label: string
+  value: number
+  suffix?: string
+}
+
+export interface ProductDemoV2Props extends ProductDemoProps {
+  /** device kind for the hero stage */
+  device?: 'browser' | 'phone' | 'both'
+  /** feature callouts highlighted during the feature phase */
+  features?: ProductDemoFeatureCallout[]
+  /** dramatic metric revealed during the data-punch phase */
+  metric?: ProductDemoMetric
+}
+
 export function buildDefaultProductDemoSteps(input: {
   process?: string
   result?: string

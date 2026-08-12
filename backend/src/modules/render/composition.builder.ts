@@ -24,10 +24,28 @@ function resolveAssetUrl(url: string) {
   return `${base}/storage/${url}`
 }
 
+type DirectorCues = {
+  shot?: { type?: string; camera?: string; speed?: number; intensity?: number }
+  visualLayer?: { background?: string; foreground?: string; overlay?: string }
+  motion?: { camera?: string; effect?: string }
+  audio?: { sfx?: string }
+  captionStyle?: {
+    preset?: 'tech' | 'documentary' | 'commercial'
+    animation?: 'scale' | 'fade' | 'spring' | 'highlight'
+    kinetic?: boolean
+  }
+  productDemo?: {
+    device?: 'browser' | 'phone' | 'both'
+    features?: Array<{ index: number; x: number; y: number; label: string }>
+    metric?: { label: string; value: number; suffix?: string }
+  }
+}
+
 type SceneCues = {
   captionStyle?: { color?: string; fontSize?: number }
   sceneProps?: Record<string, unknown>
   steps?: unknown[]
+  director?: DirectorCues
 }
 
 function resolveSfxUrl(label: string): string | null {
@@ -36,6 +54,11 @@ function resolveSfxUrl(label: string): string | null {
     whoosh: process.env.SFX_WHOOSH_URL,
     click: process.env.SFX_CLICK_URL,
     transition: process.env.SFX_WHOOSH_URL,
+    impact: process.env.SFX_IMPACT_URL,
+    boom: process.env.SFX_IMPACT_URL,
+    riser: process.env.SFX_RISER_URL,
+    sparkle: process.env.SFX_SPARKLE_URL,
+    sweep: process.env.SFX_WHOOSH_URL,
   }
   return map[label.toLowerCase()] ?? null
 }
@@ -100,6 +123,30 @@ function extractSceneProps(scene: {
   voiceText: string | null
 }): Record<string, unknown> | undefined {
   const cues = scene.cues as SceneCues | null
+  const directorProductDemo = cues?.director?.productDemo
+
+  // ProductDemoV2 — cinematic device choreography. Build base props then merge
+  // the director's productDemo block (device / features / metric) on top.
+  if (scene.componentType === 'ProductDemoV2' || scene.componentType === 'product_demo_v2') {
+    const base = cues?.sceneProps ?? {
+      title: scene.description.slice(0, 80),
+      subtitle: scene.processDesc ?? undefined,
+      url: 'app.demo/dashboard',
+      steps: buildDefaultProductDemoSteps({
+        process: scene.processDesc ?? undefined,
+        result: scene.resultDesc ?? scene.voiceText ?? undefined,
+        duration: scene.duration,
+      }),
+      theme: 'dark',
+    }
+    return {
+      ...base,
+      ...(directorProductDemo?.device ? { device: directorProductDemo.device } : {}),
+      ...(directorProductDemo?.features ? { features: directorProductDemo.features } : {}),
+      ...(directorProductDemo?.metric ? { metric: directorProductDemo.metric } : {}),
+    }
+  }
+
   if (cues?.sceneProps) return cues.sceneProps
 
   if (scene.componentType === 'ProductDemo' || scene.purpose === 'demo') {
@@ -220,6 +267,7 @@ export class CompositionBuilder {
         hasVideo && imageUrl ? 'both' : hasVideo ? 'video' : 'image'
 
       const cues = scene.cues as SceneCues | null
+      const director = cues?.director
       const resolvedComponentType =
         scene.componentType ?? blueprintEntry?.component ?? null
       const resolvedPurpose = scene.purpose ?? blueprintEntry?.purpose ?? null
@@ -245,7 +293,8 @@ export class CompositionBuilder {
         ? { ...(props ?? {}), subtitleCues }
         : props
 
-      const sceneSfxUrl = scene.soundEffect ? resolveSfxUrl(scene.soundEffect) : null
+      const sceneSfxLabel = scene.soundEffect ?? director?.audio?.sfx ?? undefined
+      const sceneSfxUrl = sceneSfxLabel ? resolveSfxUrl(sceneSfxLabel) : null
       // Rhythm Engine — derive bgmIntensity from beat/emotion/duration when the
       // director didn't set one explicitly (blueprint per-scene override → rhythm).
       const rhythm = computeRhythmIntent({
@@ -255,6 +304,34 @@ export class CompositionBuilder {
       })
       const bgmIntensity =
         scene.bgmIntensity ?? blueprintEntry?.bgmIntensity ?? rhythm.bgmIntensity
+
+      // ── Director-level Scene JSON (AI Director upgrade) ──
+      // Map the director blocks into the Remotion VideoScene so the Scene Engine
+      // (Shot Engine / Caption Engine 2.0 / Audio Engine) can consume them.
+      const directorShot = director?.shot
+      const shotConfig = directorShot
+        ? {
+            type: directorShot.type as
+              | 'establishing'
+              | 'wide'
+              | 'medium'
+              | 'close'
+              | 'macro'
+              | 'detail'
+              | undefined,
+            camera: directorShot.camera as
+              | 'push_in'
+              | 'pull_out'
+              | 'pan_left'
+              | 'pan_right'
+              | 'orbit'
+              | 'handheld'
+              | 'parallax'
+              | undefined,
+            speed: directorShot.speed,
+            intensity: directorShot.intensity,
+          }
+        : undefined
 
       const built: VideoScene = {
         id: scene.id,
@@ -270,6 +347,12 @@ export class CompositionBuilder {
           lighting: scene.lighting ?? undefined,
         },
         animation: { enter: 'spring', springPreset: 'smooth' },
+        // Shot Engine — director's `shot` block drives multi-sub-shot cinematography
+        shot: shotConfig,
+        // Director visual layer — three-layer composite for cinematic depth
+        visualLayer: director?.visualLayer,
+        // Director motion — camera movement + in-frame effect descriptions
+        motion: director?.motion,
         caption: {
           text: scene.voiceText ?? scene.description,
           style: {
@@ -281,17 +364,21 @@ export class CompositionBuilder {
           },
           highlightWords: scene.voiceText ? extractNumbers(scene.voiceText) : undefined,
           emphasizeNumbers: templateStyle?.emphasizeNumbers,
+          // Caption Engine 2.0 — director's `captionStyle` block drives kinetic typography
+          kinetic: director?.captionStyle?.kinetic,
+          preset: director?.captionStyle?.preset,
+          animation: director?.captionStyle?.animation,
         },
         audio: audioAsset?.url
           ? {
               voiceUrl: resolveAssetUrl(audioAsset.url),
               sfx: sceneSfxUrl
-                ? [{ url: sceneSfxUrl, atSec: 0, volume: 0.45, label: scene.soundEffect ?? undefined }]
+                ? [{ url: sceneSfxUrl, atSec: 0, volume: 0.45, label: sceneSfxLabel }]
                 : undefined,
               bgmIntensity,
             }
           : sceneSfxUrl
-            ? { sfx: [{ url: sceneSfxUrl, atSec: 0, volume: 0.45, label: scene.soundEffect ?? undefined }], bgmIntensity }
+            ? { sfx: [{ url: sceneSfxUrl, atSec: 0, volume: 0.45, label: sceneSfxLabel }], bgmIntensity }
             : { bgmIntensity },
         props: propsWithSubtitles,
         media: {

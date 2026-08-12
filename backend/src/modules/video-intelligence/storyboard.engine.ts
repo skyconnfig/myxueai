@@ -95,6 +95,15 @@ export function buildStoryboardFromDirectorPlan(plan: DirectorPlan): StoryboardS
       negativePrompt: scene.negativePrompt,
       sceneType: scene.sceneType,
       bgmIntensity: scene.bgmIntensity,
+      // ── Director-level Scene JSON (AI Director upgrade) — bundled ──
+      director: {
+        shot: scene.shot,
+        visualLayer: scene.visualLayer,
+        motion: scene.motion,
+        audio: scene.audio,
+        captionStyle: scene.captionStyle,
+        productDemo: scene.productDemo,
+      },
     }
 
     const sceneProps = buildScenePropsFromDirectorScene({
@@ -157,10 +166,16 @@ export function storyboardToSceneCreatePayload(scenes: StoryboardScene[]) {
       processDesc: s.process,
       resultDesc: s.result,
       motionDescription: s.motion.description,
-      soundEffect: s.audio.sfx?.[0],
+      soundEffect: s.audio.sfx?.[0] ?? s.director?.audio?.sfx,
       assetRequirement: s.assetRequirement,
       assetSource: s.assetRequirement.type === 'stock' ? 'pexels' : 'ai',
-      cues: sceneProps ? { sceneProps } : undefined,
+      cues: {
+        ...(sceneProps ? { sceneProps } : {}),
+        // ── Director-level Scene JSON (AI Director upgrade) ──
+        // Persist the director blocks so the composition builder can map them
+        // into the Remotion VideoScene (shot / visualLayer / motion / captionStyle).
+        director: s.director,
+      },
     }
   })
 }

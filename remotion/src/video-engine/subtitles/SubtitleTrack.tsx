@@ -2,6 +2,7 @@ import React from 'react'
 import { Sequence, useVideoConfig } from 'remotion'
 import type { VideoScene } from '@xueai/shared'
 import { designTokens } from '../design-system/tokens.js'
+import { CaptionRenderer } from './CaptionRenderer.js'
 import { cuesToFrameRanges, parseSubtitleCues } from './subtitle-timing.js'
 
 export interface SubtitleTrackProps {
@@ -33,6 +34,14 @@ function renderTextWithHighlights(text: string, highlightWords?: string[]) {
 
 export const SubtitleTrack: React.FC<SubtitleTrackProps> = ({ scene, cues }) => {
   const { fps } = useVideoConfig()
+
+  // Caption Engine 2.0 — kinetic typography takes over when enabled.
+  // CaptionRenderer handles its own per-token TTS sync using the scene frame,
+  // so it is rendered once for the whole scene (not per-cue).
+  if (scene.caption?.kinetic) {
+    return <CaptionRenderer scene={scene} />
+  }
+
   const parsed = parseSubtitleCues(cues ?? scene.props?.subtitleCues ?? [])
   const ranges = cuesToFrameRanges(parsed, 0, fps)
   const highlightWords = scene.caption?.highlightWords

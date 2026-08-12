@@ -1,0 +1,75 @@
+{
+  "duration": 10,
+  "ratio": "9:16",
+  "width": 1080,
+  "height": 1920,
+  "fps": 30,
+  "composition": {
+    "meta": { "id": "test-caption-engine", "title": "Caption Engine 2.0 10s Test", "templateSlug": "tech", "version": 1 },
+    "fps": 30,
+    "width": 1080,
+    "height": 1920,
+    "ratio": "9:16",
+    "duration": 10,
+    "scenes": [
+      {
+        "id": "s1", "order": 1, "purpose": "hook", "component": "CinematicFallback",
+        "duration": 3.5, "transition": "cut",
+        "shot": { "type": "establishing", "camera": "push_in", "intensity": 0.7 },
+        "camera": { "shotType": "wide", "type": "push_in", "speed": 0.5, "lighting": "neon practical lights, dark premium" },
+        "caption": {
+          "text": "AI正在改变未来",
+          "kinetic": true,
+          "preset": "tech",
+          "animation": "spring",
+          "style": { "color": "#F1F5F9", "fontSize": 48, "highlightColor": "#22D3EE", "fontWeight": 700 }
+        },
+        "audio": { "bgmIntensity": "high" },
+        "media": { "image": "https://images.unsplash.com/photo-1518770660439-4636190af475?w=1080&h=1920&fit=crop", "mediaType": "image" },
+        "meta": { "emotion": "curiosity", "storyBeat": "hook" },
+        "props": { "subtitleCues": [
+          { "startSec": 0.12, "endSec": 3.5, "text": "AI正在改变未来", "highlightWords": ["AI", "未来"] }
+        ] }
+      },
+      {
+        "id": "s2", "order": 2, "purpose": "insight", "component": "CinematicFallback",
+        "duration": 3.5, "transition": "cut",
+        "shot": { "type": "close", "camera": "orbit", "intensity": 0.6 },
+        "camera": { "shotType": "close_up", "type": "orbit", "speed": 0.4, "lighting": "warm desk lamp, cinematic" },
+        "caption": {
+          "text": "90%的人学不会，因为只学不用",
+          "kinetic": true,
+          "preset": "documentary",
+          "animation": "highlight",
+          "style": { "color": "#F8FAFC", "fontSize": 42, "highlightColor": "#FBBF24", "fontWeight": 600 }
+        },
+        "audio": { "bgmIntensity": "medium" },
+        "media": { "image": "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=1080&h=1920&fit=crop", "mediaType": "image" },
+        "meta": { "emotion": "confidence", "storyBeat": "insight" },
+        "props": { "subtitleCues": [
+          { "startSec": 0.12, "endSec": 3.5, "text": "90%的人学不会，因为只学不用", "highlightWords": ["90%"] }
+        ] }
+      },
+      {
+        "id": "s3", "order": 3, "purpose": "cta", "component": "CinematicFallback",
+        "duration": 3, "transition": "cut",
+        "shot": { "type": "medium", "camera": "pull_out", "intensity": 0.7 },
+        "camera": { "shotType": "medium", "type": "pull_out", "speed": 0.5, "lighting": "bright studio" },
+        "caption": {
+          "text": "关注我，做出你的第一个AI项目",
+          "kinetic": true,
+          "preset": "commercial",
+          "animation": "scale",
+          "style": { "color": "#FFFFFF", "fontSize": 46, "highlightColor": "#F472B6", "fontWeight": 800 }
+        },
+        "audio": { "bgmIntensity": "swell" },
+        "media": { "image": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1080&h=1920&fit=crop", "mediaType": "image" },
+        "meta": { "emotion": "success", "storyBeat": "cta" },
+        "props": { "subtitleCues": [
+          { "startSec": 0.12, "endSec": 3.0, "text": "关注我，做出你的第一个AI项目", "highlightWords": ["AI"] }
+        ] }
+      }
+    ],
+    "audio": {}
+  }
+}

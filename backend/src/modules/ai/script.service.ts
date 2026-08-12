@@ -247,6 +247,13 @@ function mapPlanScenesToDb(plan: VideoPlan) {
               duration: scene.duration,
             })
           : undefined),
+        // ── Director-level Scene JSON (AI Director upgrade) ──
+        shot: scene.shot,
+        visualLayer: scene.visualLayer,
+        motion: scene.motion,
+        audio: scene.audio,
+        captionStyle: scene.captionStyle,
+        productDemo: scene.productDemo,
         assetRequirement: {
           role: purpose === 'pain' || purpose === 'result' ? 'evidence' : 'illustration',
           type: isUiScene ? 'component' : purpose === 'pain' || purpose === 'result' ? 'stock' : 'ai-image',

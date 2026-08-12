@@ -5,6 +5,7 @@ import { ChapterOverlay } from '../components/shared/ChapterOverlay.js'
 import type { SceneComponentProps } from '../registry/types.js'
 import { CaptionLayer } from '../subtitles/CaptionLayer.js'
 import { SubtitleTrack } from '../subtitles/SubtitleTrack.js'
+import { ShotDirector } from '../shot/ShotDirector.js'
 
 function resolveSrc(src?: string) {
   if (!src) return null
@@ -49,9 +50,16 @@ export const CinematicFallbackScene: React.FC<SceneComponentProps> = ({ scene, d
   const hasSubtitleCues = Array.isArray(scene.props?.subtitleCues)
     && (scene.props?.subtitleCues as unknown[]).length > 0
 
+  // Shot Engine: when the scene declares a `shot` config and we have an image,
+  // delegate the image layer to ShotDirector (multi-sub-shot cinematography).
+  // Video media and the no-shot case keep the legacy single-transform path.
+  const useShotEngine = Boolean(scene.shot) && Boolean(imageSrc) && !useVideo
+
   return (
     <AbsoluteFill style={{ backgroundColor: '#05070A', overflow: 'hidden' }}>
-      {useVideo ? (
+      {useShotEngine ? (
+        <ShotDirector scene={scene} durationInFrames={durationInFrames} imageSrc={imageSrc!} />
+      ) : useVideo ? (
         <AbsoluteFill style={{ overflow: 'hidden' }}>
           <Video
             src={videoSrc!}

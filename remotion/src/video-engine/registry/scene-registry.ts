@@ -5,6 +5,7 @@ import { CTA } from '../components/commercial/CTA.js'
 import { DashboardAnimation } from '../components/commercial/DashboardAnimation.js'
 import { FeatureReveal } from '../components/commercial/FeatureReveal.js'
 import { ProductDemo } from '../components/commercial/ProductDemo.js'
+import { ProductDemoV2 } from '../components/commercial/ProductDemoV2.js'
 import { CinematicFallbackScene } from '../scenes/CinematicFallbackScene.js'
 import type { RegistryEntry, SceneComponent } from './types.js'
 
@@ -22,6 +23,13 @@ function registerDefaults() {
       skipCameraWrap: true,
     },
     product_demo: { component: ProductDemo, skipCameraWrap: true },
+    ProductDemoV2: {
+      component: ProductDemoV2,
+      defaultCamera: { type: 'push_in', speed: 0.5 },
+      propsSchema: 'ProductDemoV2Props',
+      skipCameraWrap: true,
+    },
+    product_demo_v2: { component: ProductDemoV2, skipCameraWrap: true },
     BrowserWindow: {
       component: BrowserWindow,
       defaultCamera: { type: 'push_in', speed: 0.4 },

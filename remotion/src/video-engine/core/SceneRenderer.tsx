@@ -33,6 +33,7 @@ export const SceneRenderer: React.FC<SceneRendererProps> = ({
     !entry.skipCameraWrap && !isCinematicFallbackComponent(String(enrichedScene.component))
   const commercialComponents = new Set([
     'ProductDemo',
+    'ProductDemoV2',
     'BrowserWindow',
     'DashboardAnimation',
     'FeatureReveal',
