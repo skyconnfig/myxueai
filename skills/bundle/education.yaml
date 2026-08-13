@@ -1,0 +1,72 @@
+id: bundle.education
+kind: bundle
+name: Education Skill
+description: 知识科普视频 — Hook → Explain → Example → Summary 结构，清晰讲解节奏。
+version: "1.0.0"
+
+trigger:
+  tags: [education, bundle, 科普, tutorial]
+  keywords: [科普, 知识, 教育, 讲解, 教程, education, 学习, 入门, 原理]
+  matchMode: any
+
+rules:
+  priority: 195
+  mergeStrategy: deep-merge
+  category: education
+  marketplace:
+    tier: official
+    category: video-type
+    featured: true
+    author: XueAI
+    summary: 知识科普四段式结构，适合教程与原理讲解
+    tags: [education, tutorial, explainer]
+  includes:
+    - template.beat-sequence
+    - hook.curiosity-open
+    - scene.wide-establishing
+    - camera.push-in-medium
+    - caption.kinetic-highlight
+    - audio.impact-cue
+  director:
+    pacing: moderate
+    style:
+      preset: educational
+      clarityFirst: true
+  storyBeats:
+    - { beat: hook, ratio: 0.15, tone: curiosity }
+    - { beat: explain, ratio: 0.40, tone: clarity }
+    - { beat: example, ratio: 0.30, tone: practical }
+    - { beat: summary, ratio: 0.15, tone: resolve }
+  captionStyle:
+    preset: commercial
+    animation: fade
+    kinetic: false
+  scene:
+    preferDiagram: true
+    preferStock: true
+    forbidUiScreenshot: false
+
+components:
+  bundle: Education
+  preferred:
+    - CinematicFallback
+    - TitleCard
+
+parameters:
+  duration:
+    type: number
+    default: 45
+  emphasizeSteps:
+    type: boolean
+    default: true
+
+examples:
+  - name: explainer-45s
+    input:
+      topic: 5分钟搞懂区块链
+      duration: 45
+    output:
+      category: education
+      storyBeats:
+        - { beat: hook, ratio: 0.15 }
+        - { beat: explain, ratio: 0.40 }

@@ -1,0 +1,2 @@
+# User-uploaded skills are stored in storage/skills/user/ at runtime.
+# Built-in skills live in repo skills/bundle/, skills/scene/, etc.

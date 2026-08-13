@@ -1,0 +1,81 @@
+id: scene.product-demo
+kind: scene
+name: Product Demo Scene
+description: Interactive product demo with browser frame, cursor trajectory, page transition, and data change.
+version: "1.0.0"
+
+trigger:
+  tags: [product, demo, saas, ui, dashboard]
+  keywords: [产品演示, 产品demo, dashboard, 工作流, SaaS, uiSteps, 交互]
+  matchMode: any
+
+rules:
+  priority: 100
+  mergeStrategy: override
+  appliesTo:
+    storyBeats: [solution, demo]
+  require:
+    componentType: ProductDemoV2
+    sceneType: ui_demo
+  director:
+    forbidFreeformCamera: true
+    components:
+      required:
+        - BrowserFrame
+        - Cursor
+        - PageTransition
+        - DataCounter
+    uiSteps:
+      minCount: 4
+      requiredActions: [move, click, navigate, dataChange]
+      preferTargets: true
+    productDemo:
+      required: true
+      simulator: true
+      device: browser
+  shot:
+    type: medium
+    camera: push_in
+    speed: 0.45
+    intensity: 0.65
+  captionStyle:
+    kinetic: true
+    preset: tech
+    animation: spring
+  uiStepsTemplate:
+    - { at: 0.35, action: move, target: runButton }
+    - { at: 0.55, action: click, target: runButton }
+    - { at: 0.65, action: navigate, target: analytics, value: Analytics, duration: 0.8 }
+    - { at: 0.8, action: dataChange, target: users, value: 520000 }
+
+components:
+  required:
+    - BrowserFrame
+    - Cursor
+    - PageTransition
+    - DataCounter
+  renderer: ProductDemoV2
+
+parameters:
+  initialData:
+    type: number
+    description: Starting metric before dataChange animation.
+    default: 479000
+  metricValue:
+    type: number
+    description: Target metric after dataChange.
+    default: 520000
+
+examples:
+  - name: saas-solution-beat
+    description: Solution beat with full uiSteps timeline
+    input:
+      storyBeat: solution
+      duration: 12
+    output:
+      componentType: ProductDemoV2
+      uiSteps:
+        - { at: 3.0, action: move, target: runButton }
+        - { at: 4.2, action: click, target: runButton }
+        - { at: 4.5, action: navigate, target: analytics }
+        - { at: 6.0, action: dataChange, target: users, value: 520000 }

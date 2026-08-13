@@ -1,0 +1,70 @@
+id: audio.cinematic-tech
+kind: audio
+name: Cinematic Tech Audio
+description: 科技风音轨 — technology BGM、whoosh/click/data 音效、ducking 配置。
+version: "1.0.0"
+
+trigger:
+  tags: [audio, technology, cinematic, sfx, bgm]
+  keywords: [音效, 背景音乐, technology, cinematic, SaaS, 科技, bgm, sfx]
+  matchMode: any
+
+rules:
+  priority: 65
+  mergeStrategy: deep-merge
+  taxonomy:
+    style: technology
+  marketplace:
+    tier: official
+    category: audio
+    featured: true
+    author: XueAI
+    summary: 科技 BGM + 节拍同步 whoosh/click/data 音效
+    tags: [audio, technology, cinematic, sfx]
+  appliesTo:
+    global: true
+  audio:
+    bgm: technology
+    bgmIntensity: medium
+    ducking: light
+    sfxDensity: medium
+  events:
+    - type: whoosh
+      atRatio: 0.08
+    - type: riser
+      atRatio: 0.22
+    - type: click
+      atRatio: 0.45
+    - type: data_tick
+      atRatio: 0.68
+    - type: impact
+      atRatio: 0.88
+  outputConstraints:
+    mustHave: [audio]
+
+components:
+  - AudioEngine
+  - CompositionAudio
+  - SceneAudio
+
+parameters:
+  bgmVolume:
+    type: number
+    default: 0.28
+  sfxEnabled:
+    type: boolean
+    default: true
+  bgmTrack:
+    type: string
+    default: technology
+    enum: [technology, cinematic, commercial, documentary]
+
+examples:
+  - name: saas-30s-audio
+    input:
+      durationSec: 30
+      style: technology
+    output:
+      audio:
+        bgm: technology
+        sfx: [whoosh, click, data_tick, impact]

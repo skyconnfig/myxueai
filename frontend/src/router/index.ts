@@ -69,6 +69,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '模板市场' },
       },
       {
+        path: 'skills',
+        name: 'skills-marketplace',
+        component: () => import('@/views/SkillsMarketplace.vue'),
+        meta: { title: 'Skill 市场' },
+      },
+      {
         path: 'settings',
         name: 'settings',
         component: () => import('@/views/Settings.vue'),

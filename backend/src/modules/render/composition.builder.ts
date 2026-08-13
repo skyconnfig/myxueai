@@ -36,6 +36,7 @@ type DirectorCues = {
   }
   productDemo?: {
     device?: 'browser' | 'phone' | 'both'
+    simulator?: boolean
     features?: Array<{ index: number; x: number; y: number; label: string }>
     metric?: { label: string; value: number; suffix?: string }
   }
@@ -144,6 +145,7 @@ function extractSceneProps(scene: {
       ...(directorProductDemo?.device ? { device: directorProductDemo.device } : {}),
       ...(directorProductDemo?.features ? { features: directorProductDemo.features } : {}),
       ...(directorProductDemo?.metric ? { metric: directorProductDemo.metric } : {}),
+      ...((directorProductDemo as { simulator?: boolean })?.simulator ? { simulator: true } : {}),
     }
   }
 

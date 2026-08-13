@@ -13,6 +13,7 @@ import videoRoutes from '../modules/video/video.routes.js'
 import workspaceRoutes from '../modules/workspace/workspace.routes.js'
 import templateRoutes from '../modules/template/template.routes.js'
 import voiceRoutes from '../modules/voice/voice.routes.js'
+import skillsRoutes from '../modules/skills/skills.routes.js'
 import { sendSuccess } from '../utils/response.js'
 
 const router = Router()
@@ -39,5 +40,6 @@ router.use('/workspace', workspaceRoutes)
 router.use('/voice', voiceRoutes)
 router.use('/render', renderRoutes)
 router.use('/templates', templateRoutes)
+router.use('/skills', skillsRoutes)
 
 export default router

@@ -1,0 +1,66 @@
+id: bundle.viral-short
+kind: bundle
+name: Viral Short Video Skill
+description: Short-form viral video — fast hook, kinetic captions, high-energy audio, 9:16 pacing.
+version: "1.0.0"
+
+trigger:
+  tags: [viral_short, bundle, short, douyin]
+  keywords: [短视频, 爆款, viral, 抖音, 快手, 15秒, 30秒, 竖屏]
+  matchMode: any
+
+rules:
+  priority: 200
+  mergeStrategy: deep-merge
+  category: viral_short
+  includes:
+    - hook.curiosity-open
+    - camera.push-in-medium
+    - caption.kinetic-highlight
+    - audio.impact-cue
+  director:
+    forbidFreeformCamera: false
+    pacing: fast
+    maxSceneDuration: 4
+  storyBeats:
+    - { beat: hook, ratio: 0.25, tone: shock }
+    - { beat: twist, ratio: 0.35, tone: surprise }
+    - { beat: payoff, ratio: 0.30, tone: delight }
+    - { beat: cta, ratio: 0.10, tone: urgency }
+  captionStyle:
+    preset: commercial
+    animation: scale
+    kinetic: true
+    placement: center
+  audio:
+    sfxDensity: high
+    bgmIntensity: high
+  ratio:
+    preferred: "9:16"
+
+components:
+  bundle: ViralShort
+  preferred:
+    - CinematicFallback
+    - HookScene
+
+parameters:
+  duration:
+    type: number
+    default: 15
+    enum: [15, 30, 45]
+  hookIntensity:
+    type: string
+    default: high
+    enum: [medium, high, extreme]
+
+examples:
+  - name: douyin-15s
+    input:
+      topic: 3秒抓住注意力
+      duration: 15
+      ratio: "9:16"
+    output:
+      category: viral_short
+      storyBeats:
+        - { beat: hook, ratio: 0.25 }

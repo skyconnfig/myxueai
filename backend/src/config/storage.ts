@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { config } from './index.js'
 
-const subdirs = ['uploads', 'images', 'audio', 'renders', 'compose', 'temp', 'footage'] as const
+const subdirs = ['uploads', 'images', 'audio', 'renders', 'compose', 'temp', 'footage', 'skills'] as const
 
 export const storagePaths = {
   root: config.storagePath,
@@ -13,6 +13,8 @@ export const storagePaths = {
   compose: path.join(config.storagePath, 'compose'),
   temp: path.join(config.storagePath, 'temp'),
   footage: path.join(config.storagePath, 'footage'),
+  skills: path.join(config.storagePath, 'skills'),
+  skillsUser: path.join(config.storagePath, 'skills', 'user'),
 } as const
 
 export function projectFootageDir(projectId: string) {

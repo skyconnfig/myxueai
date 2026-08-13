@@ -8,6 +8,7 @@ export function buildDirectorPrompt(input: {
   goal?: string
   duration?: number
   ratio?: string
+  skillPromptFragment?: string
 }) {
   return `你是一位顶级商业视频导演，擅长 Apple / SaaS 品牌宣传片。
 请为以下项目制定「导演 Brief」，用于指导后续电影分镜生成。
@@ -40,5 +41,5 @@ export function buildDirectorPrompt(input: {
 - 各拍 duration 之和应接近 ${input.duration ?? 30} 秒，比例参考：hook 10% / problem 17% / solution 40% / result 23% / cta 10%
 - 每个 beat 必须是**可拍摄的具体情境**，禁止抽象标题（如「黄金30秒视觉钩子」）
 - beat 与 visual 均不得要求画面内出现可读文字、屏幕文案或 Logo 字样（CTA 用人物手势/产品氛围表达，文字由后期叠加）
-- negative_global 应包含：${COMMERCIAL_NEGATIVE_PROMPT}`
+- negative_global 应包含：${COMMERCIAL_NEGATIVE_PROMPT}${input.skillPromptFragment ? `\n\n${input.skillPromptFragment}` : ''}`
 }

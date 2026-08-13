@@ -33,6 +33,14 @@ import { directorService, generatePresetCinematicPlan } from '../director/direct
 
 import { storyboardEngine } from '../video-intelligence/storyboard.engine.js'
 
+import { agentPlanner } from '../skills/agent-planner.js'
+
+import { skillManager } from '../skills/skill-manager.js'
+
+import { buildSkillPromptFragment } from '../skills/skill-prompt.js'
+
+import { enforceSkillRules } from '../skills/skill-enforcer.js'
+
 
 
 function scheduleSceneImageGeneration(projectId: string, sceneId?: string) {
@@ -219,7 +227,11 @@ function mapPlanScenesToDb(plan: VideoPlan) {
     scenes: plan.scenes.map((scene) => {
       const purpose = scene.storyBeat ?? 'hook'
       const componentType = resolveComponentType(scene)
-      const isUiScene = componentType === 'ProductDemo' || componentType === 'BrowserWindow' || scene.sceneType === 'ui_demo'
+      const isUiScene =
+        componentType === 'ProductDemo'
+        || componentType === 'ProductDemoV2'
+        || componentType === 'BrowserWindow'
+        || scene.sceneType === 'ui_demo'
 
       return {
         purpose,
@@ -311,7 +323,26 @@ export class ScriptService {
 
     let brief = project.directorBrief as VideoPlan['directorBrief'] | null
 
-
+    // ── Skill Layer: Agent Planner → Skill Router → compose rules ──
+    await skillManager.ensureLoaded({ strict: true })
+    const agentPlan = await agentPlanner.plan({
+      topic,
+      style,
+      videoStyle,
+      duration,
+      audience,
+      goal,
+      ratio: input.ratio ?? project.ratio,
+      userSkillIds: input.userSkillIds,
+    })
+    const leafSkillIds = agentPlan.skills.filter(
+      (id) => skillManager.getSkill(id)?.kind !== 'bundle',
+    )
+    const skillBundle = skillManager.compose(leafSkillIds)
+    const activeSkills = leafSkillIds
+      .map((id) => skillManager.getSkill(id))
+      .filter((s): s is NonNullable<typeof s> => Boolean(s))
+    const skillPromptFragment = buildSkillPromptFragment(skillBundle, activeSkills)
 
     if (openAICompatibleProvider.isConfigured) {
 
@@ -333,9 +364,15 @@ export class ScriptService {
 
           ratio: input.ratio ?? project.ratio,
 
+          skillBundle,
+
+          activeSkills,
+
+          skillPromptFragment,
+
         })
 
-        plan = normalizePlan(result.plan, duration)
+        plan = normalizePlan(enforceSkillRules(result.plan, activeSkills), duration)
 
         brief = result.brief
 
@@ -345,7 +382,13 @@ export class ScriptService {
 
         notice = error instanceof Error ? error.message : 'LLM generation failed'
 
-        plan = normalizePlan(generatePresetCinematicPlan({ topic, style, videoStyle, audience, goal, duration }), duration)
+        plan = normalizePlan(
+          enforceSkillRules(
+            generatePresetCinematicPlan({ topic, style, videoStyle, audience, goal, duration }),
+            activeSkills,
+          ),
+          duration,
+        )
 
         brief = plan.directorBrief
 
@@ -355,7 +398,13 @@ export class ScriptService {
 
       notice = 'OPENAI_API_KEY / LLM_API_KEY 未配置，已使用商业片预设分镜模板'
 
-      plan = normalizePlan(generatePresetCinematicPlan({ topic, style, videoStyle, audience, goal, duration }), duration)
+      plan = normalizePlan(
+        enforceSkillRules(
+          generatePresetCinematicPlan({ topic, style, videoStyle, audience, goal, duration }),
+          activeSkills,
+        ),
+        duration,
+      )
 
       brief = plan.directorBrief
 
@@ -457,7 +506,7 @@ export class ScriptService {
 
     scheduleSceneImageGeneration(project.id)
 
-    return { project: updated, source, notice, plan }
+    return { project: updated, source, notice, plan, agentPlan, skills: agentPlan.skills }
 
   }
 

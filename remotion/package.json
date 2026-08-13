@@ -9,6 +9,7 @@
     "render": "remotion render src/index.ts VideoComposition",
     "render:cli": "node scripts/render.mjs",
     "render:fixture": "node scripts/render.mjs fixtures/sample-render-input.json out/sample.mp4",
+    "render:test:product-demo": "node scripts/render.mjs tests/golden/product-demo/product-demo-10s.json out/test-product-demo-v2-10s.mp4",
     "build:bundle": "remotion bundle src/index.ts",
     "browser:ensure": "remotion browser ensure",
     "build": "remotion bundle src/index.ts",

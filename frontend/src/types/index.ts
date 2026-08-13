@@ -114,6 +114,16 @@ export interface GenerateScriptPayload {
   audience?: string
   goal?: string
   videoStyle?: string
+  userSkillIds?: string[]
+}
+
+export interface GenerateScriptResult {
+  project: ProjectDetail
+  source: 'llm' | 'preset'
+  notice?: string
+  plan?: VideoPlan
+  agentPlan?: { category: string; style: string; duration: number; skills: string[] }
+  skills?: string[]
 }
 
 export interface VideoPlanScene extends CinematicSceneFields {
@@ -156,13 +166,6 @@ export interface ApiErrorResponse {
     code: string
     message: string
   }
-}
-
-export interface GenerateScriptResult {
-  project: ProjectDetail
-  source: 'llm' | 'preset'
-  notice?: string
-  plan?: VideoPlan
 }
 
 export interface OptimizeScriptPayload {

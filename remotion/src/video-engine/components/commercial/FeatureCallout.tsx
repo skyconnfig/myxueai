@@ -7,7 +7,7 @@
  */
 
 import React from 'react'
-import { spring, useCurrentFrame, useVideoConfig } from 'remotion'
+import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion'
 import { designTokens } from '../../design-system/tokens.js'
 
 export interface FeatureCalloutItem {
@@ -20,6 +20,10 @@ export interface FeatureCalloutItem {
   label: string
   /** frame at which this callout appears */
   appearAt: number
+  /** frames to hold visible (default ~1s) */
+  holdFrames?: number
+  /** frames to fade out (default ~0.3s) */
+  exitFrames?: number
 }
 
 export interface FeatureCalloutProps {
@@ -35,12 +39,28 @@ export const FeatureCallout: React.FC<FeatureCalloutProps> = ({ items, radius = 
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
       {items.map((item) => {
+        const holdFrames = item.holdFrames ?? Math.round(fps * 1.0)
+        const exitFrames = item.exitFrames ?? Math.round(fps * 0.3)
+        const enterFrames = Math.round(fps * 0.4)
+        const local = frame - item.appearAt
+
         const pop = spring({
-          frame: frame - item.appearAt,
+          frame: local,
           fps,
           config: designTokens.spring.snappy,
+          durationInFrames: enterFrames,
         })
-        if (pop <= 0.01) return null
+
+        const exitStart = enterFrames + holdFrames
+        const exitProgress =
+          local > exitStart
+            ? interpolate(local, [exitStart, exitStart + exitFrames], [1, 0], {
+                extrapolateLeft: 'clamp',
+                extrapolateRight: 'clamp',
+              })
+            : 1
+
+        if (local < 0 || exitProgress <= 0.01) return null
 
         const pulse = 1 + Math.sin((frame / fps) * Math.PI * 2 * 1.2) * 0.06
         const left = `${item.x * 100}%`
@@ -54,7 +74,7 @@ export const FeatureCallout: React.FC<FeatureCalloutProps> = ({ items, radius = 
               left,
               top,
               transform: `translate(-50%, -50%) scale(${pop * pulse})`,
-              opacity: pop,
+              opacity: pop * exitProgress,
             }}
           >
             {/* Spotlight ring */}

@@ -1,6 +1,8 @@
 import { COMMERCIAL_NEGATIVE_PROMPT, COMMERCIAL_STYLE_PRESETS, buildDefaultProductDemoSteps } from '@xueai/shared'
+import type { ComposedSkillBundle, SkillDefinition } from '@xueai/shared'
 import type { DirectorBrief, VideoPlan } from '../project/project.types.js'
 import { openAICompatibleProvider } from '../ai/providers/openai-compatible.provider.js'
+import { buildSkillPromptFragment } from '../skills/skill-prompt.js'
 
 function presetStyleLabel(videoStyle?: string) {
   return COMMERCIAL_STYLE_PRESETS.find((item) => item.id === videoStyle)?.description
@@ -173,17 +175,29 @@ export class DirectorService {
     goal?: string
     duration?: number
     ratio?: string
+    skillBundle?: ComposedSkillBundle
+    activeSkills?: SkillDefinition[]
+    skillPromptFragment?: string
   }): Promise<{ plan: VideoPlan; brief: DirectorBrief; source: 'llm' | 'preset' }> {
     const duration = input.duration ?? 30
+    const skillPromptFragment =
+      input.skillPromptFragment ??
+      (input.activeSkills?.length
+        ? buildSkillPromptFragment(input.skillBundle ?? { skillIds: [], kinds: [], rules: {}, components: [], parameters: {}, examples: [] }, input.activeSkills)
+        : '')
 
     if (openAICompatibleProvider.isConfigured) {
       try {
-        const brief = await openAICompatibleProvider.generateDirectorBrief(input)
+        const brief = await openAICompatibleProvider.generateDirectorBrief({
+          ...input,
+          skillPromptFragment,
+        })
         const plan = await openAICompatibleProvider.generateCinematicScenes({
           topic: input.topic,
           brief,
           duration,
           ratio: input.ratio,
+          skillPromptFragment,
         })
         return { plan, brief, source: 'llm' }
       } catch {
@@ -206,6 +220,7 @@ export class DirectorService {
     goal?: string
     duration?: number
     ratio?: string
+    skillPromptFragment?: string
   }): Promise<{ brief: DirectorBrief; source: 'llm' | 'preset' }> {
     if (openAICompatibleProvider.isConfigured) {
       try {

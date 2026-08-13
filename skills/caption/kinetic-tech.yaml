@@ -1,0 +1,65 @@
+id: caption.kinetic-tech
+kind: caption
+name: Kinetic Tech Caption
+description: 科技风 kinetic 字幕 — 关键词高亮、数字强调、tech preset。
+version: "1.0.0"
+
+trigger:
+  tags: [caption, kinetic, tech, technology, subtitle]
+  keywords: [字幕, caption, kinetic, 高亮, 科技字幕, tech caption]
+  matchMode: any
+
+rules:
+  priority: 55
+  mergeStrategy: deep-merge
+  taxonomy:
+    style: technology
+  marketplace:
+    tier: official
+    category: caption
+    featured: true
+    author: XueAI
+    summary: 逐词 kinetic 字幕 + 关键词/数字高亮，tech 预设
+    tags: [caption, kinetic, tech, subtitle]
+  appliesTo:
+    global: true
+  caption:
+    kinetic: true
+    animation: spring
+    highlightKeywords: true
+    emphasizeNumbers: true
+  captionStyle:
+    preset: tech
+    kinetic: true
+    animation: spring
+  style:
+    preset: tech
+    placement: bottom_safe
+    fontWeight: 700
+
+components:
+  - CaptionRenderer
+  - SubtitleTrack
+  - CaptionEngine
+
+parameters:
+  preset:
+    type: string
+    default: tech
+    enum: [tech, commercial, documentary]
+  fontSize:
+    type: number
+    default: 42
+  highlightColor:
+    type: string
+    default: "#38bdf8"
+
+examples:
+  - name: tech-highlight
+    input:
+      text: "AI Agent 效率提升 300%"
+    output:
+      captionStyle:
+        preset: tech
+        kinetic: true
+        animation: spring

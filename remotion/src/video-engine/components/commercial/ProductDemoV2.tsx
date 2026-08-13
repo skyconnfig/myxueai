@@ -1,20 +1,8 @@
 /**
  * ProductDemoV2 — cinematic product demo for commercial videos.
  *
- * Replaces the flat v1 ProductDemo with a multi-phase commercial hero shot:
- *
- *   Phase 1 (0-20%)   Hero entrance  — device flies in with 3D tilt + screen glow
- *   Phase 2 (20-50%)  Screen reveal  — camera zooms into the screen, UI fades in
- *   Phase 3 (50-80%)  Feature highlight — numbered callouts spotlight UI regions
- *   Phase 4 (80-100%) Data punch     — metric counter ticks up dramatically + chart
- *
- * Integrates with the new engines:
- *   - Shot Engine: scene.shot drives the continuous camera move on the device
- *   - Caption Engine 2.0: renders kinetic captions over the demo when enabled
- *   - visualLayer: background tint + overlay glow from the director's block
- *
- * Driven entirely by VideoScene JSON (scene.props + scene.shot + scene.caption),
- * so the AI Director controls it without any code changes.
+ * When `simulator` is true (default without screenshot), renders an interactive
+ * UI simulator driven by uiSteps. Legacy screenshot mode remains for backward compat.
  */
 
 import React, { useMemo } from 'react'
@@ -35,6 +23,7 @@ import { FeatureCallout, type FeatureCalloutItem } from './FeatureCallout.js'
 import { Cursor } from '../motion/Cursor.js'
 import { TextReveal } from '../motion/TextReveal.js'
 import type { SceneComponentProps } from '../../registry/types.js'
+import { ProductDemoSimulator } from '../../product-demo/ProductDemoSimulator.js'
 
 function resolveSrc(src?: string) {
   if (!src) return null
@@ -61,10 +50,19 @@ function parseProps(scene: VideoScene): ProductDemoV2Props {
     device: raw.device ?? 'browser',
     features: raw.features,
     metric: raw.metric,
+    simulator: raw.simulator,
+    subShots: raw.subShots,
+    initialData: raw.initialData,
   }
 }
 
-/** Animated metric counter for the data-punch phase. */
+function useSimulatorMode(props: ProductDemoV2Props): boolean {
+  if (props.simulator === true) return true
+  if (props.simulator === false) return false
+  return !props.screenshot
+}
+
+/** Animated metric counter for legacy screenshot mode. */
 const MetricPunch: React.FC<{
   label: string
   value: number
@@ -120,48 +118,55 @@ export const ProductDemoV2: React.FC<SceneComponentProps> = ({ scene, durationIn
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
   const props = useMemo(() => parseProps(scene), [scene])
+  const simulatorMode = useSimulatorMode(props)
+
+  if (simulatorMode) {
+    return (
+      <ProductDemoSimulator
+        scene={scene}
+        props={props}
+        durationInFrames={durationInFrames}
+        subShots={props.subShots}
+        initialData={props.initialData ?? 479_000}
+      />
+    )
+  }
+
   const totalSec = durationInFrames / fps
-  const timeSec = frame / fps
   const progress = Math.min(1, frame / Math.max(1, durationInFrames))
 
-  // Phase boundaries (by progress).
   const HERO_END = 0.2
   const REVEAL_END = 0.5
   const FEATURE_END = 0.8
 
-  // Hero entrance spring.
   const enter = spring({ frame, fps, config: designTokens.spring.smooth, durationInFrames: Math.round(durationInFrames * HERO_END) })
-
-  // Screen zoom: ramps up during the reveal phase, holds through feature + data.
   const screenZoom = interpolate(progress, [HERO_END, REVEAL_END], [0, 1], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   })
-
-  // Screenshot backdrop.
   const screenshot = resolveSrc(props.screenshot)
-
-  // UI content opacity — fades in during reveal phase.
   const uiOpacity = interpolate(progress, [HERO_END * 0.8, REVEAL_END * 0.7], [0, 1], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   })
 
-  // Feature callouts — appear sequentially during the feature phase.
   const featureItems: FeatureCalloutItem[] = useMemo(() => {
     const features = props.features ?? []
     const featureStart = Math.round(durationInFrames * HERO_END)
     const featureSpan = Math.max(1, Math.round(durationInFrames * (FEATURE_END - HERO_END)))
+    const holdFrames = Math.round(fps * 1.0)
+    const exitFrames = Math.round(fps * 0.3)
     return features.map((f, i) => ({
       index: f.index,
       x: f.x,
       y: f.y,
       label: f.label,
       appearAt: featureStart + Math.round((featureSpan / Math.max(1, features.length)) * i),
+      holdFrames,
+      exitFrames,
     }))
-  }, [props.features, durationInFrames])
+  }, [props.features, durationInFrames, fps])
 
-  // Data punch — active in the final phase.
   const metric = props.metric
   const dataActive = progress >= FEATURE_END
   const dataProgress = interpolate(progress, [FEATURE_END, 1], [0, 1], {
@@ -169,7 +174,6 @@ export const ProductDemoV2: React.FC<SceneComponentProps> = ({ scene, durationIn
     extrapolateRight: 'clamp',
   })
 
-  // visualLayer background tint + overlay glow.
   const bgTint = scene.visualLayer?.background
   const overlayGlow = scene.visualLayer?.overlay
 
@@ -183,7 +187,6 @@ export const ProductDemoV2: React.FC<SceneComponentProps> = ({ scene, durationIn
         overflow: 'hidden',
       }}
     >
-      {/* Overlay glow layer (from director visualLayer.overlay) */}
       {overlayGlow ? (
         <div
           style={{
@@ -206,7 +209,6 @@ export const ProductDemoV2: React.FC<SceneComponentProps> = ({ scene, durationIn
         screenZoom={screenZoom}
         screenContent={
           <>
-            {/* Screenshot backdrop */}
             {screenshot ? (
               <Img
                 src={screenshot}
@@ -221,7 +223,6 @@ export const ProductDemoV2: React.FC<SceneComponentProps> = ({ scene, durationIn
               />
             ) : null}
 
-            {/* UI content */}
             <div
               style={{
                 position: 'relative',
@@ -243,7 +244,6 @@ export const ProductDemoV2: React.FC<SceneComponentProps> = ({ scene, durationIn
                 </div>
               ) : null}
 
-              {/* Data punch takes over the screen in the final phase */}
               {dataActive && metric ? (
                 <div style={{ marginTop: 24 }}>
                   <MetricPunch
@@ -257,7 +257,6 @@ export const ProductDemoV2: React.FC<SceneComponentProps> = ({ scene, durationIn
               ) : (
                 <>
                   <TextReveal text={scene.caption?.text ?? props.title} startFrame={Math.round(fps * 0.4)} />
-                  {/* Simple progress bar tied to scene progress */}
                   <div
                     style={{
                       marginTop: 24,
@@ -271,18 +270,11 @@ export const ProductDemoV2: React.FC<SceneComponentProps> = ({ scene, durationIn
               )}
             </div>
 
-            {/* Feature callouts overlay */}
             {featureItems.length > 0 ? <FeatureCallout items={featureItems} /> : null}
-
-            {/* Cursor follows uiSteps */}
             <Cursor steps={props.steps} durationInFrames={durationInFrames} />
           </>
         }
       />
-
-      {/* Captions are rendered by the SceneRenderer's SubtitleTrack (which
-          delegates to CaptionRenderer for kinetic mode), so this component
-          stays focused on the device choreography + data punch. */}
     </AbsoluteFill>
   )
 }

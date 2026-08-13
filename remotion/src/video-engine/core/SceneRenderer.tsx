@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { AbsoluteFill } from 'remotion'
 import type { VideoScene } from '@xueai/shared'
 import { CameraMove } from '../animations/CameraMove.js'
@@ -12,6 +12,7 @@ import { SceneAudio } from '../audio/SceneAudio.js'
 import { CaptionLayer } from '../subtitles/CaptionLayer.js'
 import { SubtitleTrack } from '../subtitles/SubtitleTrack.js'
 import type { VideoCompositionJSON } from '@xueai/shared'
+import { buildRenderTrace, isRenderTraceEnabled, RenderTraceOverlay } from '../debug/index.js'
 
 export interface SceneRendererProps {
   scene: VideoScene
@@ -49,6 +50,12 @@ export const SceneRenderer: React.FC<SceneRendererProps> = ({
   const hasSubtitleCues = Array.isArray(enrichedScene.props?.subtitleCues)
     && (enrichedScene.props?.subtitleCues as unknown[]).length > 0
 
+  const showTrace = isRenderTraceEnabled()
+  const trace = useMemo(
+    () => (showTrace ? buildRenderTrace(enrichedScene, sceneIndex) : null),
+    [showTrace, enrichedScene, sceneIndex],
+  )
+
   const content = (
     <AbsoluteFill style={{ backgroundColor: '#05070A', overflow: 'hidden' }}>
       <SceneAudio scene={enrichedScene} />
@@ -64,6 +71,7 @@ export const SceneRenderer: React.FC<SceneRendererProps> = ({
       ) : showCaption ? (
         <CaptionLayer scene={enrichedScene} durationInFrames={durationInFrames} />
       ) : null}
+      {trace ? <RenderTraceOverlay trace={trace} /> : null}
     </AbsoluteFill>
   )
 

@@ -1,0 +1,35 @@
+# Skill Marketplace 官方目录 — 精选 Skill 列表
+version: "1.0.0"
+name: XueAI Official Skill Marketplace
+description: Agent 可调用的官方 Skill 市场目录
+
+featured:
+  - style.technology
+  - caption.kinetic-tech
+  - audio.cinematic-tech
+  - bundle.product-demo
+  - bundle.tech-documentary
+  - bundle.viral-short
+  - bundle.education
+  - bundle.advertisement
+  - caption.kinetic-highlight
+  - audio.impact-cue
+
+categories:
+  - id: video-style
+    name: 视频风格
+    skills: [style.technology]
+  - id: caption
+    name: 字幕
+    skills: [caption.kinetic-tech, caption.kinetic-highlight]
+  - id: audio
+    name: 音频
+    skills: [audio.cinematic-tech, audio.impact-cue]
+  - id: video-type
+    name: 视频类型
+    skills:
+      - bundle.product-demo
+      - bundle.tech-documentary
+      - bundle.viral-short
+      - bundle.education
+      - bundle.advertisement

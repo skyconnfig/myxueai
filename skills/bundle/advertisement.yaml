@@ -1,0 +1,76 @@
+id: bundle.advertisement
+kind: bundle
+name: Advertisement Skill
+description: 商业广告 — Brand → Problem → Solution → Benefit → CTA 五段式品牌叙事。
+version: "1.0.0"
+
+trigger:
+  tags: [advertisement, bundle, commercial, brand]
+  keywords: [广告, 宣传, 品牌, 商业, advertisement, commercial, 推广, 营销]
+  matchMode: any
+
+rules:
+  priority: 195
+  mergeStrategy: deep-merge
+  category: advertisement
+  marketplace:
+    tier: official
+    category: video-type
+    featured: true
+    author: XueAI
+    summary: 品牌广告五段式叙事，强调利益点与 CTA
+    tags: [advertisement, brand, commercial]
+  includes:
+    - template.beat-sequence
+    - hook.curiosity-open
+    - scene.wide-establishing
+    - camera.push-in-medium
+    - style.technology
+    - caption.kinetic-tech
+    - audio.cinematic-tech
+  director:
+    pacing: dynamic
+    style:
+      preset: commercial
+      brandFirst: true
+  storyBeats:
+    - { beat: brand, ratio: 0.10, tone: identity }
+    - { beat: problem, ratio: 0.20, tone: tension }
+    - { beat: solution, ratio: 0.30, tone: confidence }
+    - { beat: benefit, ratio: 0.25, tone: delight }
+    - { beat: cta, ratio: 0.15, tone: urgency }
+  captionStyle:
+    preset: commercial
+    animation: scale
+    kinetic: true
+  outputConstraints:
+    mustHave: [shot, motion, captionStyle, audio]
+  audio:
+    bgmIntensity: high
+    sfxDensity: medium
+
+components:
+  bundle: Advertisement
+  preferred:
+    - CinematicFallback
+    - CTA
+
+parameters:
+  duration:
+    type: number
+    default: 30
+  brandName:
+    type: string
+    description: Brand name for opening beat.
+    default: ""
+
+examples:
+  - name: brand-ad-30s
+    input:
+      topic: 智能办公品牌宣传片
+      duration: 30
+    output:
+      category: advertisement
+      storyBeats:
+        - { beat: brand, ratio: 0.10 }
+        - { beat: cta, ratio: 0.15 }

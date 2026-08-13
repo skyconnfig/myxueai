@@ -113,6 +113,7 @@ export function buildCinematicScenePrompt(input: {
   brief: DirectorBrief
   duration: number
   ratio?: string
+  skillPromptFragment?: string
 }) {
   return `你是电影级商业视频导演 + 分镜师。基于导演 Brief，输出**导演级 Scene JSON**——不只是文字脚本，而是完整的镜头语言指令，直接驱动 Remotion 渲染。
 
@@ -230,6 +231,8 @@ ${TARGET_STRUCTURE}
 8. negativePrompt: 禁止出现的画面元素
 
 ${UI_STEP_SCHEMA}
+
+${input.skillPromptFragment ? `\n${input.skillPromptFragment}\n` : ''}
 
 其他要求：
 - **必须严格遵循「目标成片结构」的 5 拍叙事弧**：hook → problem → solution → result → cta，按比例缩放各拍 duration

@@ -56,6 +56,18 @@ export function buildScenePropsFromDirectorScene(
     return props as unknown as Record<string, unknown>
   }
 
+  if (component === 'ProductDemoV2') {
+    const props: ProductDemoProps & { simulator?: boolean } = {
+      title,
+      subtitle: scene.process,
+      url: 'app.demo/dashboard',
+      steps: steps ?? defaultSteps,
+      theme: 'dark',
+      simulator: true,
+    }
+    return props as unknown as Record<string, unknown>
+  }
+
   if (component === 'BrowserWindow' || scene.purpose === 'solution') {
     const props: BrowserWindowProps = {
       title,

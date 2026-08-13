@@ -22,6 +22,7 @@ export const generateScriptSchema = z.object({
   goal: z.string().optional(),
   videoStyle: z.string().optional(),
   skipCredits: z.boolean().optional(),
+  userSkillIds: z.array(z.string()).optional(),
 })
 
 export const optimizeScriptSchema = z.object({
@@ -110,6 +111,7 @@ export const cinematicSceneFieldsSchema = z.object({
   // Product Demo v2 — cinematic device choreography props
   productDemo: z.object({
     device: z.enum(['browser', 'phone', 'both']).optional(),
+    simulator: z.boolean().optional(),
     features: z.array(z.object({
       index: z.number().int().positive(),
       x: z.number().min(0).max(1),
@@ -126,7 +128,7 @@ export const cinematicSceneFieldsSchema = z.object({
 
 export const uiStepSchema = z.object({
   at: z.number().min(0),
-  action: z.enum(['move', 'click', 'navigate', 'dataChange', 'type']),
+  action: z.enum(['move', 'hover', 'click', 'navigate', 'dataChange', 'type']),
   target: z.string().optional(),
   value: z.union([z.string(), z.number()]).optional(),
   duration: z.number().optional(),

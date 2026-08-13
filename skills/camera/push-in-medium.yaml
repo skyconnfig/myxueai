@@ -1,0 +1,49 @@
+id: camera.push-in-medium
+kind: camera
+name: Medium Push-In
+description: Applies a restrained push-in camera move on medium framing.
+version: "1.0.0"
+
+trigger:
+  tags: [camera, motion, push]
+  keywords: [推镜, push, dolly, medium]
+  matchMode: any
+
+rules:
+  priority: 30
+  mergeStrategy: override
+  shot:
+    type: medium
+    camera: push_in
+  motion:
+    speed: 0.45
+    intensity: 0.65
+  limits:
+    maxRotateDeg: 4
+    maxScale: 1.15
+
+components:
+  - CameraMove
+  - ShotDirector
+
+parameters:
+  speed:
+    type: number
+    description: Camera move speed factor 0–1.
+    default: 0.45
+  intensity:
+    type: number
+    description: Camera move intensity factor 0–1.
+    default: 0.65
+
+examples:
+  - name: default-push
+    input:
+      speed: 0.45
+      intensity: 0.65
+    output:
+      shot:
+        type: medium
+        camera: push_in
+        speed: 0.45
+        intensity: 0.65

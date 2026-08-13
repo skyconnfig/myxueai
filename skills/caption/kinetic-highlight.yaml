@@ -1,0 +1,59 @@
+id: caption.kinetic-highlight
+kind: caption
+name: Kinetic Highlight Caption
+description: Enables word-level kinetic captions with keyword highlighting.
+version: "1.0.0"
+
+trigger:
+  tags: [caption, subtitle, kinetic]
+  keywords: [字幕,  kinetic, highlight, caption]
+  matchMode: any
+
+rules:
+  priority: 40
+  mergeStrategy: deep-merge
+  marketplace:
+    tier: official
+    category: caption
+    featured: false
+    author: XueAI
+    summary: 通用 kinetic 字幕高亮
+    tags: [caption, kinetic]
+  appliesTo:
+    global: true
+  caption:
+    kinetic: true
+    animation: spring
+  style:
+    preset: default
+    placement: auto
+  emphasis:
+    highlightWords: true
+    emphasizeNumbers: true
+
+components:
+  - CaptionRenderer
+  - SubtitleTrack
+
+parameters:
+  preset:
+    type: string
+    description: Caption style preset name.
+    default: default
+    enum: [default, tech, documentary, commercial]
+  fontSize:
+    type: number
+    description: Base caption font size in px.
+    default: 40
+
+examples:
+  - name: kinetic-on
+    input:
+      text: "Sample line with KEYWORD"
+      preset: tech
+    output:
+      caption:
+        kinetic: true
+        animation: spring
+      style:
+        preset: tech

@@ -1,0 +1,58 @@
+id: audio.impact-cue
+kind: audio
+name: Impact Audio Cue
+description: Schedules synchronized impact / riser audio events on narrative beats.
+version: "1.0.0"
+
+trigger:
+  tags: [audio, sfx, impact]
+  keywords: [音效, impact, riser, sfx]
+  matchMode: any
+
+rules:
+  priority: 50
+  mergeStrategy: append
+  marketplace:
+    tier: official
+    category: audio
+    featured: false
+    author: XueAI
+    summary: 通用节拍 impact / riser 音效
+    tags: [audio, sfx]
+  appliesTo:
+    global: true
+  audio:
+    ducking: medium
+  events:
+    - type: whoosh
+      atRatio: 0.15
+    - type: click
+      atRatio: 0.42
+    - type: riser
+      atRatio: 0.75
+    - type: impact
+      atRatio: 0.92
+
+components:
+  - AudioEngine
+  - SceneAudio
+
+parameters:
+  bgmVolume:
+    type: number
+    description: Background music volume 0–1.
+    default: 0.24
+  sfxEnabled:
+    type: boolean
+    description: Whether SFX cues are active.
+    default: true
+
+examples:
+  - name: four-cues
+    input:
+      durationSec: 10
+      sfxEnabled: true
+    output:
+      events:
+        - { type: whoosh, atSec: 1.5 }
+        - { type: click, atSec: 4.2 }

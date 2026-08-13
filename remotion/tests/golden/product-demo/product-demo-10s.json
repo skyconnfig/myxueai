@@ -1,0 +1,85 @@
+{
+  "duration": 10,
+  "ratio": "9:16",
+  "width": 1080,
+  "height": 1920,
+  "fps": 30,
+  "composition": {
+    "meta": {
+      "id": "golden-product-demo-10s",
+      "title": "SaaS Product Demo — Golden 10s",
+      "templateSlug": "tech",
+      "version": 2
+    },
+    "fps": 30,
+    "width": 1080,
+    "height": 1920,
+    "ratio": "9:16",
+    "duration": 10,
+    "scenes": [
+      {
+        "id": "saas-demo",
+        "order": 1,
+        "purpose": "solution",
+        "component": "ProductDemoV2",
+        "duration": 10,
+        "transition": "cut",
+        "shot": { "type": "medium", "camera": "push_in", "speed": 0.45, "intensity": 0.65 },
+        "visualLayer": {
+          "background": "modern office warm light",
+          "foreground": "browser UI simulator",
+          "overlay": "soft UI glow"
+        },
+        "camera": { "shotType": "medium", "type": "zoom_in", "speed": 0.45 },
+        "caption": {
+          "text": "自动流转 实时看板",
+          "kinetic": true,
+          "preset": "tech",
+          "animation": "spring",
+          "style": { "fontSize": 40, "highlightColor": "#22D3EE" }
+        },
+        "meta": { "emotion": "confidence", "storyBeat": "solution" },
+        "props": {
+          "simulator": true,
+          "title": "AI Workflow Dashboard",
+          "subtitle": "一键自动化 全流程跑通",
+          "url": "app.demo/dashboard",
+          "device": "browser",
+          "theme": "dark",
+          "initialData": 479000,
+          "steps": [
+            { "at": 3.0, "action": "move", "target": "runButton" },
+            { "at": 4.2, "action": "click", "target": "runButton" },
+            { "at": 4.5, "action": "navigate", "target": "analytics", "value": "Analytics", "duration": 0.8 },
+            { "at": 6.0, "action": "dataChange", "target": "users", "value": 520000 }
+          ],
+          "subShots": [
+            { "start": 0, "duration": 1.5, "camera": "wide" },
+            { "start": 1.5, "duration": 1.5, "camera": "medium" },
+            { "start": 3.0, "duration": 4.5, "camera": "close" },
+            { "start": 7.5, "duration": 1.5, "camera": "detail" },
+            { "start": 9.0, "duration": 1.0, "camera": "detail" }
+          ],
+          "metric": { "label": "效率提升", "value": 300, "suffix": "%" },
+          "subtitleCues": [
+            { "startSec": 2.8, "endSec": 5.5, "text": "一键运行", "highlightWords": ["一键"] },
+            { "startSec": 6.0, "endSec": 8.5, "text": "实时看板", "highlightWords": ["实时"] },
+            { "startSec": 9.0, "endSec": 10.0, "text": "效率提升 300%", "highlightWords": ["300%"] }
+          ]
+        }
+      }
+    ],
+    "audio": {
+      "backgroundMusic": {
+        "url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+        "volume": 0.2
+      },
+      "audio": [
+        { "type": "whoosh", "time": 1.5 },
+        { "type": "click", "time": 4.2 },
+        { "type": "riser", "time": 6.0 },
+        { "type": "impact", "time": 9.0 }
+      ]
+    }
+  }
+}

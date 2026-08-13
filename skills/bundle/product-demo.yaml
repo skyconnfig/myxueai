@@ -1,0 +1,44 @@
+id: bundle.product-demo
+kind: bundle
+name: Product Demo Skill
+description: SaaS / UI product demonstration — browser simulator, cursor, uiSteps, data change.
+version: "1.0.0"
+
+trigger:
+  tags: [product_demo, bundle, saas, demo]
+  keywords: [产品演示, 产品demo, SaaS, dashboard, 工作流, 自动化, uiSteps]
+  matchMode: any
+
+rules:
+  priority: 200
+  mergeStrategy: deep-merge
+  category: product_demo
+  includes:
+    - template.beat-sequence
+    - hook.curiosity-open
+    - scene.wide-establishing
+    - scene.product-demo
+    - camera.push-in-medium
+    - style.technology
+    - caption.kinetic-tech
+    - audio.cinematic-tech
+
+components:
+  bundle: ProductDemo
+
+parameters:
+  duration:
+    type: number
+    description: Target video duration in seconds.
+    default: 30
+
+examples:
+  - name: saas-30s
+    input:
+      topic: SaaS 工作流自动化
+      duration: 30
+    output:
+      category: product_demo
+      skills:
+        - scene.product-demo
+        - camera.push-in-medium

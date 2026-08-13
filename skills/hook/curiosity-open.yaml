@@ -1,0 +1,49 @@
+id: hook.curiosity-open
+kind: hook
+name: Curiosity Open
+description: Opens with a curiosity-driven beat to capture attention in the first seconds.
+version: "1.0.0"
+
+trigger:
+  tags: [opening, hook, attention]
+  keywords: [开场, 吸引, hook, open]
+  matchMode: any
+
+rules:
+  priority: 10
+  mergeStrategy: deep-merge
+  beat:
+    role: hook
+    durationRatio: 0.12
+  narrative:
+    intent: spark_curiosity
+  constraints:
+    maxVoiceLength: 36
+
+components:
+  - SceneIntro
+  - TitleCard
+
+parameters:
+  durationRatio:
+    type: number
+    description: Fraction of total video duration for the hook beat.
+    default: 0.12
+    required: false
+  tone:
+    type: string
+    description: Emotional tone keyword for the opening.
+    default: curious
+    enum: [curious, urgent, playful, dramatic]
+
+examples:
+  - name: short-form
+    description: 15s video hook slice
+    input:
+      totalDuration: 15
+      tone: curious
+    output:
+      beat:
+        durationSec: 1.8
+      narrative:
+        intent: spark_curiosity

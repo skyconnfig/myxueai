@@ -1,0 +1,48 @@
+id: template.beat-sequence
+kind: template
+name: Beat Sequence Template
+description: Defines a reusable multi-beat timeline structure as ratios of total duration.
+version: "1.0.0"
+
+trigger:
+  tags: [template, structure, beats]
+  keywords: [结构, beat, sequence, template]
+  matchMode: any
+
+rules:
+  priority: 5
+  mergeStrategy: deep-merge
+  structure:
+    beats:
+      - { id: a, ratio: 0.15, role: open }
+      - { id: b, ratio: 0.25, role: develop }
+      - { id: c, ratio: 0.35, role: peak }
+      - { id: d, ratio: 0.15, role: resolve }
+      - { id: e, ratio: 0.10, role: close }
+  validation:
+    requireRatioSum: 1.0
+
+components:
+  mapping: BeatTimeline
+
+parameters:
+  beatCount:
+    type: number
+    description: Expected number of beats (informational).
+    default: 5
+  allowPartial:
+    type: boolean
+    description: Allow composing with fewer matched skills.
+    default: true
+
+examples:
+  - name: five-beat
+    input:
+      totalDuration: 30
+    output:
+      beats:
+        - { id: a, durationSec: 4.5 }
+        - { id: b, durationSec: 7.5 }
+        - { id: c, durationSec: 10.5 }
+        - { id: d, durationSec: 4.5 }
+        - { id: e, durationSec: 3.0 }

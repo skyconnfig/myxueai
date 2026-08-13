@@ -1,0 +1,46 @@
+# 用户自定义 Skill 示例 — 通过 POST /api/skills/upload 上传
+id: user.custom-hook
+kind: hook
+name: Custom User Hook
+description: 用户自定义开场 Hook Skill，可在 Skill Marketplace 公开展示。
+version: "1.0.0"
+
+trigger:
+  tags: [custom, user, hook]
+  keywords: [自定义, custom, 开场]
+  matchMode: any
+
+rules:
+  priority: 50
+  mergeStrategy: deep-merge
+  marketplace:
+    tier: user
+    category: community
+    public: true
+    author: Community
+    summary: 用户自定义开场 Hook 模板
+    tags: [hook, custom, user]
+  appliesTo:
+    storyBeats: [hook]
+  beat:
+    role: hook
+    durationRatio: 0.15
+  narrative:
+    intent: user_defined
+
+components:
+  - TitleCard
+
+parameters:
+  hookText:
+    type: string
+    description: Custom hook line.
+    default: 自定义开场
+
+examples:
+  - name: default
+    input:
+      topic: 自定义主题
+    output:
+      beat:
+        role: hook

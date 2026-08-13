@@ -1,0 +1,73 @@
+id: style.technology
+kind: style
+name: Technology Style
+description: 科技风视觉 — 冷色调色、tech 字幕、SaaS/AI 产品默认风格。
+version: "1.0.0"
+
+trigger:
+  tags: [technology, tech, style, saas, ai]
+  keywords: [科技, 技术, technology, SaaS, AI, 软件, 数字化, Agent, 办公]
+  matchMode: any
+
+rules:
+  priority: 85
+  mergeStrategy: deep-merge
+  taxonomy:
+    style: technology
+  marketplace:
+    tier: official
+    category: video-style
+    featured: true
+    author: XueAI
+    summary: 冷色科技调色 + tech 字幕 + 适合 SaaS/AI 产品视频
+    tags: [technology, saas, ai, b2b]
+  appliesTo:
+    global: true
+  director:
+    style:
+      preset: technology
+      palette: ["#0ea5e9", "#6366f1", "#0f172a"]
+      lighting: cool_soft
+      colorGrade: tech_blue
+  scene:
+    lighting: cool blue tech lighting, soft rim light, minimal shadows
+    emotion: confident, innovative
+  captionStyle:
+    preset: tech
+    kinetic: true
+    animation: spring
+  camera:
+    preferred: [push_in, dolly_in, parallax]
+  audio:
+    bgm: technology
+    bgmIntensity: medium
+
+components:
+  style: Technology
+  preferred:
+    - ProductDemoV2
+    - CinematicFallback
+
+parameters:
+  accentColor:
+    type: string
+    description: Primary accent hex color.
+    default: "#0ea5e9"
+  coolGrade:
+    type: boolean
+    description: Apply cool blue color grade.
+    default: true
+
+examples:
+  - name: ai-agent-30s
+    input:
+      topic: AI Agent 办公软件
+      style: technology
+      duration: 30
+    output:
+      director:
+        style:
+          preset: technology
+      captionStyle:
+        preset: tech
+        kinetic: true

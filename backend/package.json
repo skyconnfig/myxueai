@@ -14,7 +14,9 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "e2e:saas-demo": "node scripts/e2e-saas-demo-scene.mjs",
-    "e2e:production": "node scripts/e2e-production-engine.mjs"
+    "e2e:production": "node scripts/e2e-production-engine.mjs",
+    "skills:validate": "tsx scripts/validate-skills.ts",
+    "skills:director": "tsx scripts/skills-director-smoke.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.2.1",
@@ -27,6 +29,7 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
     "ws": "^8.18.0",
+    "yaml": "^2.7.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {

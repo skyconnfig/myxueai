@@ -22,7 +22,7 @@ import { useStudioStore } from '@/stores/studio'
 
 import { useWorkspaceStore } from '@/stores/workspace'
 
-import type { DbVideoTemplate } from '@/api/template'
+import { loadSelectedSkillIds, saveSelectedSkillIds } from '@/api/skills'
 
 
 
@@ -55,6 +55,7 @@ const goal = ref('conversion')
 const videoStyle = ref('apple_saas_commercial')
 
 const submitting = ref(false)
+const selectedSkillIds = ref<string[]>(loadSelectedSkillIds())
 
 
 
@@ -73,6 +74,14 @@ onMounted(() => {
   if (typeof q.duration === 'string') duration.value = Number(q.duration) || 30
 
   if (q.ratio === '9:16' || q.ratio === '16:9' || q.ratio === '1:1') ratio.value = q.ratio
+
+  if (typeof q.skills === 'string' && q.skills) {
+    selectedSkillIds.value = q.skills.split(',').filter(Boolean)
+    saveSelectedSkillIds(selectedSkillIds.value)
+  } else if (typeof q.skill === 'string' && q.skill) {
+    selectedSkillIds.value = [...new Set([...selectedSkillIds.value, q.skill])]
+    saveSelectedSkillIds(selectedSkillIds.value)
+  }
 
 })
 
@@ -173,6 +182,24 @@ function onTemplateSelect(tpl: DbVideoTemplate) {
         <h1 class="text-xl font-bold text-white m-0">输入一个想法，AI 完成剩下的事</h1>
 
         <p class="text-sm text-muted m-0">导演 Brief · 故事弧 · 电影分镜 · 素材 · 渲染</p>
+
+        <div v-if="selectedSkillIds.length" class="flex flex-wrap justify-center gap-2 pt-2">
+          <span class="text-[10px] text-muted">已选 Skill:</span>
+          <span
+            v-for="id in selectedSkillIds"
+            :key="id"
+            class="text-[10px] font-mono px-2 py-0.5 rounded-lg bg-card border border-accent-blue/40 text-accent-blue"
+          >
+            {{ id }}
+          </span>
+          <button
+            class="text-[10px] text-muted hover:text-white underline"
+            type="button"
+            @click="router.push({ name: 'skills-marketplace' })"
+          >
+            管理
+          </button>
+        </div>
 
       </div>
 

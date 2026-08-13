@@ -1,4 +1,4 @@
-export type UiStepAction = 'move' | 'click' | 'navigate' | 'dataChange' | 'type'
+export type UiStepAction = 'move' | 'hover' | 'click' | 'navigate' | 'dataChange' | 'type'
 
 export interface UiStep {
   at: number
@@ -40,6 +40,12 @@ export interface ProductDemoMetric {
   suffix?: string
 }
 
+export interface ProductDemoSubShot {
+  start: number
+  duration: number
+  camera: 'wide' | 'medium' | 'close' | 'detail'
+}
+
 export interface ProductDemoV2Props extends ProductDemoProps {
   /** device kind for the hero stage */
   device?: 'browser' | 'phone' | 'both'
@@ -47,6 +53,12 @@ export interface ProductDemoV2Props extends ProductDemoProps {
   features?: ProductDemoFeatureCallout[]
   /** dramatic metric revealed during the data-punch phase */
   metric?: ProductDemoMetric
+  /** use interactive UI simulator instead of screenshot overlay (default when no screenshot) */
+  simulator?: boolean
+  /** multi-phase camera framing within the scene */
+  subShots?: ProductDemoSubShot[]
+  /** initial metric value for dataChange animation */
+  initialData?: number
 }
 
 export function buildDefaultProductDemoSteps(input: {

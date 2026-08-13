@@ -33,19 +33,21 @@
         "camera": { "shotType": "medium", "type": "zoom_in", "speed": 0.45, "lighting": "warm desk lamp + screen glow" },
         "caption": { "text": "自动流转 实时看板", "kinetic": true, "preset": "tech", "animation": "spring", "style": { "fontSize": 40, "highlightColor": "#22D3EE" } },
         "audio": { "bgmIntensity": "medium" },
-        "media": { "image": "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1080&h=1920&fit=crop", "mediaType": "image" },
+        "media": { "mediaType": "image" },
         "meta": { "emotion": "confidence", "storyBeat": "solution" },
         "props": {
+          "simulator": true,
           "title": "AI Workflow Dashboard",
           "subtitle": "一键自动化 全流程跑通",
           "url": "app.demo/dashboard",
           "device": "browser",
           "theme": "dark",
+          "initialData": 479000,
           "steps": [
-            { "at": 0.4, "action": "move", "x": 0.35, "y": 0.42, "target": "nav-dashboard" },
-            { "at": 1.5, "action": "click", "target": "btn-automation" },
-            { "at": 3.0, "action": "navigate", "value": "Workflow" },
-            { "at": 5.0, "action": "dataChange", "target": "metric-primary", "value": 300 }
+            { "at": 0.4, "action": "move", "target": "runButton" },
+            { "at": 1.5, "action": "click", "target": "runButton" },
+            { "at": 2.2, "action": "navigate", "target": "analytics", "value": "Analytics", "duration": 0.6 },
+            { "at": 4.5, "action": "dataChange", "target": "users", "value": 520000 }
           ],
           "features": [
             { "index": 1, "x": 0.3, "y": 0.32, "label": "一键启动" },

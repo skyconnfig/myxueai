@@ -1,0 +1,47 @@
+id: scene.wide-establishing
+kind: scene
+name: Wide Establishing Scene
+description: Establishes context with a wide framing before moving into detail.
+version: "1.0.0"
+
+trigger:
+  tags: [establishing, scene, context]
+  keywords: [建立, 全景, wide, establishing]
+  matchMode: any
+
+rules:
+  priority: 20
+  mergeStrategy: deep-merge
+  framing:
+    type: wide
+    reveal: gradual
+  layout:
+    safeArea: default
+  transition:
+    in: fade
+    out: cut
+
+components:
+  primary: EstablishingLayer
+  overlays:
+    - AmbientBackground
+
+parameters:
+  holdSec:
+    type: number
+    description: Seconds to hold the establishing frame.
+    default: 1.5
+  fadeInSec:
+    type: number
+    description: Fade-in duration for scene entrance.
+    default: 0.4
+
+examples:
+  - name: baseline
+    input:
+      holdSec: 1.5
+    output:
+      framing:
+        type: wide
+      timing:
+        holdSec: 1.5

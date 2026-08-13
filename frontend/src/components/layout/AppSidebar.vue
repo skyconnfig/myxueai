@@ -3,6 +3,7 @@ import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   BarChart3,
+  Brain,
   Clapperboard,
   FolderKanban,
   HardDrive,
@@ -46,6 +47,7 @@ const navGroups: NavGroup[] = [
     items: [
       { key: 'assets', label: '素材库', icon: Layers, route: 'assets' },
       { key: 'templates', label: '模板库', icon: LayoutTemplate, route: 'templates' },
+      { key: 'skills', label: 'Skill 市场', icon: Brain, route: 'skills-marketplace' },
     ],
   },
   {
@@ -67,6 +69,7 @@ const activeKey = computed(() => {
   if (name === 'dashboard') return 'dashboard'
   if (name === 'assets') return 'assets'
   if (name === 'templates') return 'templates'
+  if (name === 'skills-marketplace') return 'skills'
   if (name === 'settings') return 'settings'
   return 'dashboard'
 })

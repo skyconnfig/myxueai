@@ -3,6 +3,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useMessage } from 'naive-ui'
 import { resolveVoiceSettings, isStockImageUrl } from '@xueai/shared'
 import { generateScript, optimizeScript, changeStyle } from '@/api/script'
+import { loadSelectedSkillIds } from '@/api/skills'
 import { autoEditProject, updateProjectCaptions } from '@/api/studio'
 import { startProduction, regenerateVoice, generateSceneImages } from '@/api/production'
 import { updateScene as patchScene } from '@/api/scene'
@@ -528,6 +529,7 @@ export function useVideoPlanStudio() {
         audience: projectStore.currentProject?.audience ?? undefined,
         goal: projectStore.currentProject?.goal ?? undefined,
         videoStyle: projectStore.currentProject?.videoStyle ?? undefined,
+        userSkillIds: loadSelectedSkillIds().length ? loadSelectedSkillIds() : undefined,
       })
       projectStore.currentProject = result.project
       scriptSource.value = result.source

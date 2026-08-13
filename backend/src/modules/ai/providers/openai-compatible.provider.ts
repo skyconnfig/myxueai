@@ -45,6 +45,7 @@ export class OpenAICompatibleProvider {
     goal?: string
     duration?: number
     ratio?: string
+    skillPromptFragment?: string
   }): Promise<DirectorBrief> {
     const result = await unifiedAiClient.chatCompletion({
       messages: [
@@ -67,6 +68,7 @@ export class OpenAICompatibleProvider {
     brief: DirectorBrief
     duration: number
     ratio?: string
+    skillPromptFragment?: string
   }): Promise<VideoPlan> {
     const result = await unifiedAiClient.chatCompletion({
       messages: [

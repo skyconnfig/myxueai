@@ -1,0 +1,69 @@
+id: bundle.tech-documentary
+kind: bundle
+name: Tech Documentary Skill
+description: Technology documentary style — evidence-driven narrative, handheld camera, highlight captions.
+version: "1.0.0"
+
+trigger:
+  tags: [tech_documentary, documentary, bundle, tech]
+  keywords: [科技纪录片, 纪录片, documentary, 深度解析, 技术解读, 访谈, 纪实]
+  matchMode: any
+
+rules:
+  priority: 200
+  mergeStrategy: deep-merge
+  category: tech_documentary
+  includes:
+    - template.beat-sequence
+    - hook.curiosity-open
+    - scene.wide-establishing
+    - camera.push-in-medium
+    - caption.kinetic-highlight
+    - audio.impact-cue
+  director:
+    forbidFreeformCamera: true
+    style:
+      preset: documentary
+      realism: high
+      evidenceFirst: true
+  storyBeats:
+    - { beat: hook, ratio: 0.12, tone: curiosity }
+    - { beat: problem, ratio: 0.20, tone: tension }
+    - { beat: evidence, ratio: 0.35, tone: analytical }
+    - { beat: insight, ratio: 0.23, tone: clarity }
+    - { beat: cta, ratio: 0.10, tone: resolve }
+  captionStyle:
+    preset: documentary
+    animation: highlight
+    kinetic: true
+  camera:
+    preferred: [handheld, pan_left, parallax]
+    forbidden: [orbit, macro]
+  scene:
+    preferStock: true
+    preferLiveAction: true
+    forbidUiScreenshot: true
+
+components:
+  bundle: TechDocumentary
+  preferred:
+    - CinematicFallback
+    - broll_video
+
+parameters:
+  duration:
+    type: number
+    default: 60
+  emphasizeNumbers:
+    type: boolean
+    default: true
+
+examples:
+  - name: ai-explainer-60s
+    input:
+      topic: AI 技术深度解析
+      duration: 60
+    output:
+      category: tech_documentary
+      captionStyle:
+        preset: documentary
