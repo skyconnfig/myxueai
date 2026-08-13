@@ -6,6 +6,8 @@ import { ensureStorageDirectories } from './config/storage.js'
 import { authService } from './modules/auth/auth.service.js'
 import { seedVideoTemplates } from './modules/template/template.seed-runner.js'
 import { productionService } from './modules/production/production.service.js'
+import { loadRuntimeAiSettings } from './modules/settings/runtime-settings.js'
+import { bootstrapRemotionSettings } from './modules/settings/remotion-settings.service.js'
 import { logger, loggerError } from './utils/logger.js'
 import { wsHub } from './ws/ws.server.js'
 
@@ -75,6 +77,8 @@ async function shutdown(signal: string) {
 
 async function bootstrap() {
   ensureStorageDirectories()
+  loadRuntimeAiSettings()
+  await bootstrapRemotionSettings()
   await connectDatabase()
   await seedVideoTemplates().catch((err) => loggerError('Template seed failed', err))
 

@@ -4,12 +4,17 @@ import ChangeStyleModal from '@/components/studio/ChangeStyleModal.vue'
 import EditSubtitlesModal from '@/components/studio/EditSubtitlesModal.vue'
 import AiCreatePanel from '@/components/studio/AiCreatePanel.vue'
 import AiDirectorPanel from '@/components/studio/AiDirectorPanel.vue'
+import ActiveSkillsPanel from '@/components/studio/ActiveSkillsPanel.vue'
 import CreationPipeline from '@/components/studio/CreationPipeline.vue'
+import DirectorBriefPanel from '@/components/studio/DirectorBriefPanel.vue'
 import StoryTimeline from '@/components/studio/StoryTimeline.vue'
 import VideoPreviewStudio from '@/components/studio/VideoPreviewStudio.vue'
 import { useVideoPlanStudio } from '@/composables/useVideoPlanStudio'
+import { fetchAssets } from '@/api/asset'
+import type { AssetDto } from '@xueai/shared'
 import { DEMO_ASSETS } from '@/data/mockData'
 import { useStudioStore } from '@/stores/studio'
+import { ref, watch } from 'vue'
 
 const studioStore = useStudioStore()
 
@@ -40,6 +45,8 @@ const {
   generationNotice,
   showAssetPicker,
   scriptSource,
+  agentPlan,
+  activeSkillIds,
   project,
   selectedScene,
   totalDuration,
@@ -64,6 +71,38 @@ const {
   handleDeleteScene,
   goToProduction,
 } = useVideoPlanStudio()
+
+const assetOptions = ref<Array<{ id: string; title: string; url: string }>>([])
+
+watch(showAssetPicker, async (open) => {
+  if (!open || isDemoProject.value) {
+    assetOptions.value = DEMO_ASSETS.filter((a) => a.url).map((a) => ({
+      id: a.id,
+      title: a.title,
+      url: a.url,
+    }))
+    return
+  }
+  try {
+    const assets = await fetchAssets({ projectId: projectId.value, type: 'image' })
+    assetOptions.value = assets
+      .filter((a: AssetDto) => a.url)
+      .map((a: AssetDto) => ({ id: a.id, title: a.name ?? a.id, url: a.url! }))
+    if (!assetOptions.value.length) {
+      assetOptions.value = DEMO_ASSETS.filter((a) => a.url).map((a) => ({
+        id: a.id,
+        title: a.title,
+        url: a.url,
+      }))
+    }
+  } catch {
+    assetOptions.value = DEMO_ASSETS.filter((a) => a.url).map((a) => ({
+      id: a.id,
+      title: a.title,
+      url: a.url,
+    }))
+  }
+})
 </script>
 
 <template>
@@ -99,6 +138,10 @@ const {
             :goal="project.goal"
             :video-style="project.videoStyle"
             :duration="project.duration"
+          />
+          <ActiveSkillsPanel
+            :skill-ids="activeSkillIds"
+            :agent-category="agentPlan?.category"
           />
           <AiCreatePanel
             class="flex-1 min-h-0"
@@ -183,7 +226,7 @@ const {
         </div>
         <div class="grid grid-cols-3 gap-3 max-h-80 overflow-y-auto">
           <button
-            v-for="ast in DEMO_ASSETS.filter((a) => a.url)"
+            v-for="ast in assetOptions"
             :key="ast.id"
             class="bg-card border border-border rounded-xl overflow-hidden hover:border-accent-blue/50 group text-left"
             @click="selectedScene && updateScene(selectedScene.id, { imageUrl: ast.url, imageSource: 'manual' }); showAssetPicker = false"

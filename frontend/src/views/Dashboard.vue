@@ -4,18 +4,22 @@ import { useRouter } from 'vue-router'
 import { useDialog, useMessage } from 'naive-ui'
 import {
   ArrowRight,
+  CheckCircle,
   Clock,
   FolderKanban,
   Layers,
   Play,
   Plus,
   Rocket,
+  Search,
   Sparkles,
   Trash2,
   TrendingUp,
   Video,
   Wand2,
+  Zap,
 } from 'lucide-vue-next'
+import { usePreferences } from '@/composables/usePreferences'
 import { useProjectStore } from '@/stores/project'
 import { useWorkspaceStore } from '@/stores/workspace'
 
@@ -24,61 +28,85 @@ const message = useMessage()
 const dialog = useDialog()
 const projectStore = useProjectStore()
 const workspaceStore = useWorkspaceStore()
+const { t } = usePreferences()
 const deletingId = ref<string | null>(null)
+const searchQuery = ref('')
 
 onMounted(async () => {
-  await Promise.all([projectStore.loadProjects(), workspaceStore.loadTemplates(), workspaceStore.loadSummary()])
+  await Promise.all([
+    projectStore.loadProjects(),
+    workspaceStore.loadTemplates(),
+    workspaceStore.loadSummary(),
+    workspaceStore.loadTasks(30),
+  ])
 })
 
-const displayProjects = computed(() =>
-  projectStore.projects.map((p) => ({
-    id: p.id,
-    name: p.name,
-    category: p.style ?? '未分类',
-    status: p.status,
-    ratio: p.ratio,
-    duration: p.duration,
-    updatedAt: new Date(p.updatedAt).toLocaleDateString(),
-    thumbnail: p.thumbnail ?? '',
-    sceneCount: p.sceneCount ?? 0,
-  })),
-)
+const displayProjects = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase()
+  return projectStore.projects
+    .filter((p) => {
+      if (!q) return true
+      return (
+        p.name.toLowerCase().includes(q) ||
+        (p.style ?? '').toLowerCase().includes(q) ||
+        p.status.toLowerCase().includes(q)
+      )
+    })
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      category: p.style ?? '未分类',
+      status: p.status,
+      ratio: p.ratio,
+      duration: p.duration,
+      updatedAt: new Date(p.updatedAt).toLocaleDateString(),
+      thumbnail: p.thumbnail ?? '',
+      sceneCount: p.sceneCount ?? 0,
+    }))
+})
+
+const renderSuccessRate = computed(() => {
+  const tasks = workspaceStore.recentTasks
+  if (!tasks.length) return '—'
+  const done = tasks.filter((t) => t.status === 'SUCCESS').length
+  return `${Math.round((done / tasks.length) * 1000) / 10}%`
+})
 
 const dashboardStats = computed(() => [
   {
-    label: '剩余 AI 点数',
-    value: workspaceStore.credits.toLocaleString(),
-    unit: '',
-    trend: '脚本生成 ~120/次',
-    icon: Sparkles,
-    color: 'text-accent-purple',
-  },
-  {
-    label: '进行中任务',
-    value: String(workspaceStore.runningCount),
+    label: t('dash.title') === 'Project Dashboard' ? 'Active Projects' : '活跃项目',
+    value: String(projectStore.projects.length),
     unit: '个',
-    trend: `队列 ${workspaceStore.queueCount} 个`,
-    icon: Rocket,
+    trend: `${displayProjects.value.length} 个可见`,
+    icon: FolderKanban,
     color: 'text-accent-blue',
   },
   {
-    label: '平均单条用时',
-    value: workspaceStore.avgProductionMinutes != null ? String(workspaceStore.avgProductionMinutes) : '—',
-    unit: workspaceStore.avgProductionMinutes != null ? '分钟' : '',
+    label: t('dash.title') === 'Project Dashboard' ? 'Weekly Renders' : '本周 Agent 渲染',
+    value: String(workspaceStore.completedProjectCount || workspaceStore.runningCount),
+    unit: '次',
+    trend: `队列 ${workspaceStore.queueCount} 个`,
+    icon: Zap,
+    color: 'text-accent-purple',
+  },
+  {
+    label: t('dash.title') === 'Project Dashboard' ? 'Success Rate' : '渲染成功率',
+    value: renderSuccessRate.value,
+    unit: renderSuccessRate.value === '—' ? '' : '',
     trend:
       workspaceStore.completedProjectCount > 0
         ? `已完成 ${workspaceStore.completedProjectCount} 个项目`
         : '完成首个项目后显示',
-    icon: Clock,
-    color: 'text-warning',
+    icon: CheckCircle,
+    color: 'text-success',
   },
   {
-    label: '资产库索引',
-    value: workspaceStore.assetCount.toLocaleString(),
-    unit: '个',
-    trend: '高清素材与音频',
-    icon: Layers,
-    color: 'text-accent-purple',
+    label: t('dash.title') === 'Project Dashboard' ? 'Cloud Credits' : '可用云点数',
+    value: workspaceStore.credits.toLocaleString(),
+    unit: '',
+    trend: '脚本生成 ~120/次',
+    icon: Sparkles,
+    color: 'text-warning',
   },
 ])
 
@@ -131,36 +159,15 @@ async function handleDeleteProject(id: string) {
 
 <template>
   <div class="p-6 space-y-6 max-w-7xl mx-auto">
-    <div class="glass-panel p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
-      <div class="space-y-2">
-        <div class="flex items-center gap-2">
-          <span class="px-2 py-0.5 bg-accent-blue/10 border border-accent-blue/30 text-accent-blue text-[11px] font-mono rounded-full">
-            AI 视频生产操作系统
-          </span>
-        </div>
-        <h1 class="text-xl font-bold text-white m-0">欢迎回来，从想法到成片只需一步</h1>
-        <p class="text-sm text-muted max-w-2xl m-0">
-          灵感 → AI 脚本 → 自动分镜 → 素材生成 → 自动剪辑 → 多端发布
-        </p>
-      </div>
-      <div class="flex items-center gap-3 shrink-0">
-        <button
-          type="button"
-          class="btn-soft"
-          @click="openStudio(displayProjects[0]?.id)"
-        >
-          <Video class="w-4 h-4 text-accent-blue" />
-          进入 Studio
-        </button>
-        <button
-          type="button"
-          class="btn-soft btn-soft--primary"
-          @click="router.push({ name: 'create-video' })"
-        >
-          <Plus class="w-4 h-4 text-accent-blue" />
-          AI 创建视频
-        </button>
-      </div>
+    <div class="flex flex-col md:flex-row md:items-center justify-end gap-4">
+      <button
+        type="button"
+        class="btn-soft btn-soft--primary"
+        @click="router.push({ name: 'create-video' })"
+      >
+        <Plus class="w-4 h-4 text-accent-blue" />
+        {{ t('header.create') }}
+      </button>
     </div>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -217,11 +224,20 @@ async function handleDeleteProject(id: string) {
     </div>
 
     <div class="space-y-4">
-      <div class="flex items-center justify-between">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div class="flex items-center gap-2">
           <FolderKanban class="w-4 h-4 text-accent-blue" />
           <h2 class="text-base font-bold text-white m-0">最近项目</h2>
           <span class="text-xs text-muted font-mono">({{ displayProjects.length }})</span>
+        </div>
+        <div class="relative max-w-xs w-full">
+          <Search class="w-4 h-4 text-muted absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            v-model="searchQuery"
+            type="search"
+            :placeholder="t('dash.search')"
+            class="w-full h-9 pl-9 pr-3 bg-dark border border-border rounded-xl text-sm text-white placeholder-muted focus:outline-none focus:border-accent-blue"
+          />
         </div>
       </div>
 

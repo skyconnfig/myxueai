@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XueAI Video Factory — AI Video OS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class', // Enable class-based dark mode
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            900: '#1e3a8a',
+                        }
+                    },
+                    boxShadow: {
+                        'glass-light': '0 8px 32px 0 rgba(31, 38, 135, 0.07)',
+                        'glass-dark': '0 8px 32px 0 rgba(0, 0, 0, 0.3)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* Clean Ambient Background */
+        .ambient-bg {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+        }
+        
+        .dark .ambient-bg {
+            background: radial-gradient(circle at 15% 50%, rgba(30, 58, 138, 0.15), transparent 25%),
+                        radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.15), transparent 25%);
+            background-color: #020617; /* slate-950 */
+        }
+
+        html:not(.dark) .ambient-bg {
+            background: radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.08), transparent 25%),
+                        radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.08), transparent 25%);
+            background-color: #f8fafc; /* slate-50 */
+        }
+
+        /* Premium Glass Panel */
+        .glass-panel {
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            transition: all 0.2s ease-in-out;
+        }
+
+        .dark .glass-panel {
+            background: rgba(15, 23, 42, 0.6); /* slate-900 */
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        html:not(.dark) .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05);
+        }
+
+        .glass-panel-interactive:hover {
+            transform: translateY(-2px);
+        }
+        .dark .glass-panel-interactive:hover {
+            border-color: rgba(59, 130, 246, 0.3);
+            box-shadow: 0 12px 40px -10px rgba(59, 130, 246, 0.15);
+        }
+        html:not(.dark) .glass-panel-interactive:hover {
+            border-color: rgba(59, 130, 246, 0.2);
+            box-shadow: 0 12px 40px -10px rgba(59, 130, 246, 0.1);
+        }
+
+        /* Input Styling */
+        .input-base {
+            transition: all 0.2s ease;
+            outline: none;
+        }
+        .dark .input-base {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #f1f5f9;
+        }
+        .dark .input-base:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+        html:not(.dark) .input-base {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            color: #0f172a;
+        }
+        html:not(.dark) .input-base:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        .dark ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
+        html:not(.dark) ::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.15); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3b82f6; }
+    </style>
+</head>
+<body class="h-full flex flex-col antialiased text-slate-900 dark:text-slate-100 selection:bg-brand-500 selection:text-white">
+
+    <div class="ambient-bg"></div>
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-3 pointer-events-none"></div>
+    <div id="app" class="relative z-10 flex flex-col min-h-screen"></div>
+
+    <script>
+        // --- State Management ---
+        const state = {
+            theme: localStorage.getItem('theme') || 'dark', // 'light' or 'dark'
+            lang: localStorage.getItem('lang') || 'zh',     // 'zh' or 'en'
+            currentRoute: '/dashboard',
+            routeParams: {},
+            coins: 2480,
+            activeRatio: '16:9',
+            player: { playing: false, currentTime: 0, duration: 30, currentSceneIndex: 0, timer: null },
+            
+            // Mock Data
+            projects: [
+                {
+                    id: 'proj-1', 
+                    status: 'FINISHED', ratio: '16:9', duration: 30, updatedAt: '10m ago',
+                    thumbnail: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80',
+                    scenes: [
+                        { id: 1, title: 'Hook Scene', duration: 6, voice: 'Welcome to the future of video creation.' },
+                        { id: 2, title: 'Feature Demo', duration: 10, voice: 'AI Agent automates the entire pipeline.' }
+                    ]
+                }
+            ],
+            selectedSkills: ['style.minimal', 'camera.orbit-3d']
+        };
+
+        // Apply initial theme
+        if (state.theme === 'dark') document.documentElement.classList.add('dark');
+        else document.documentElement.classList.remove('dark');
+
+        // --- i18n Dictionary ---
+        const i18n = {
+            zh: {
+                // Header & Nav
+                'app.name': 'XueAI 视频 OS',
+                'nav.studio': 'AI 创作坊',
+                'nav.dashboard': '项目大厅',
+                'nav.skills': '技能模组',
+                'nav.assets': '云端资产',
+                'nav.templates': '视频模板',
+                'nav.settings': '系统设置',
+                'header.workspace': '当前工作区',
+                'header.create': '新建视频',
+                'header.tasks': '任务队列',
+                
+                // Dashboard
+                'dash.title': '项目控制中心',
+                'dash.subtitle': '管理、监控与导出 AI 导演视频工作流',
+                'dash.stat1': '活跃项目',
+                'dash.stat2': '本周 Agent 渲染',
+                'dash.stat3': '渲染成功率',
+                'dash.stat4': '可用云点数',
+                'dash.recent': '最近项目',
+                'dash.search': '搜索项目...',
+                'dash.enter': '进入 Studio',
+                
+                // Create & Plan
+                'create.title': '一句指令，驱动完整流水线',
+                'create.subtitle': 'AI 自动完成创意拆解 · 镜头排版 · 声音推演 · 代码合成',
+                'create.prompt_label': '输入创意想法或视频脚本',
+                'create.prompt_placeholder': '例如：帮我制作一段极简风格的 SaaS 产品演示视频，主要面向企业客户...',
+                'create.ratio': '画幅比例',
+                'create.duration': '目标时长 (秒)',
+                'create.submit': 'Agent 生成分镜与导演方案',
+                
+                'plan.step1': '需求分析',
+                'plan.step2': '脚本分镜',
+                'plan.step3': '可视工作台',
+                'plan.step4': '云端渲染',
+                'plan.render_btn': '执行 Remotion 渲染',
+                'plan.brief_title': 'AI 导演 Brief',
+                'plan.scene_title': '分镜故事板',
+                'plan.add_scene': '添加镜头',
+                'plan.voice': '画外音',
+                
+                // General
+                'btn.cancel': '取消',
+                'btn.save': '保存',
+                'status.finished': '已完成',
+                'status.draft': '草稿',
+                'toast.theme': '主题已切换',
+                'toast.lang': 'Language changed successfully'
+            },
+            en: {
+                // Header & Nav
+                'app.name': 'XueAI Video OS',
+                'nav.studio': 'AI Studio',
+                'nav.dashboard': 'Dashboard',
+                'nav.skills': 'Skill Modules',
+                'nav.assets': 'Cloud Assets',
+                'nav.templates': 'Templates',
+                'nav.settings': 'Settings',
+                'header.workspace': 'Workspace',
+                'header.create': 'New Video',
+                'header.tasks': 'Task Queue',
+                
+                // Dashboard
+                'dash.title': 'Project Dashboard',
+                'dash.subtitle': 'Manage, monitor and export AI director workflows',
+                'dash.stat1': 'Active Projects',
+                'dash.stat2': 'Weekly Renders',
+                'dash.stat3': 'Success Rate',
+                'dash.stat4': 'Cloud Credits',
+                'dash.recent': 'Recent Projects',
+                'dash.search': 'Search projects...',
+                'dash.enter': 'Open Studio',
+                
+                // Create & Plan
+                'create.title': 'One Prompt, Full Pipeline',
+                'create.subtitle': 'AI automates ideation, storyboarding, voice, and code synthesis.',
+                'create.prompt_label': 'Enter your idea or script',
+                'create.prompt_placeholder': 'E.g., Create a minimal SaaS product demo video aimed at enterprise clients...',
+                'create.ratio': 'Aspect Ratio',
+                'create.duration': 'Duration (sec)',
+                'create.submit': 'Generate Storyboard with Agent',
+                
+                'plan.step1': 'Briefing',
+                'plan.step2': 'Storyboarding',
+                'plan.step3': 'Visual Studio',
+                'plan.step4': 'Cloud Render',
+                'plan.render_btn': 'Execute Remotion Render',
+                'plan.brief_title': 'AI Director Brief',
+                'plan.scene_title': 'Storyboard Scenes',
+                'plan.add_scene': 'Add Scene',
+                'plan.voice': 'Voiceover',
+                
+                // General
+                'btn.cancel': 'Cancel',
+                'btn.save': 'Save',
+                'status.finished': 'FINISHED',
+                'status.draft': 'DRAFT',
+                'toast.theme': 'Theme switched',
+                'toast.lang': '语言切换成功'
+            }
+        };
+
+        // Helper to translate keys
+        function t(key) {
+            return i18n[state.lang][key] || key;
+        }
+
+        // --- Core Functions ---
+        function navigateTo(route, params = {}) {
+            state.currentRoute = route;
+            state.routeParams = params;
+            if (state.player.timer) clearInterval(state.player.timer);
+            state.player.playing = false;
+            renderApp();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function toggleTheme() {
+            state.theme = state.theme === 'dark' ? 'light' : 'dark';
+            localStorage.setItem('theme', state.theme);
+            if (state.theme === 'dark') {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+            showToast(t('toast.theme'), 'info');
+            renderApp();
+        }
+
+        function toggleLang() {
+            state.lang = state.lang === 'zh' ? 'en' : 'zh';
+            localStorage.setItem('lang', state.lang);
+            showToast(t('toast.lang'), 'info');
+            renderApp();
+        }
+
+        function showToast(msg, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            // Clean styling for toast
+            const baseClass = "pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl border shadow-lg text-sm transition-all duration-300 transform translate-y-3 opacity-0 backdrop-blur-xl font-medium";
+            
+            const typeStyles = {
+                dark: {
+                    success: 'bg-slate-900/90 border-emerald-500/30 text-emerald-400',
+                    info: 'bg-slate-900/90 border-brand-500/30 text-brand-400'
+                },
+                light: {
+                    success: 'bg-white/90 border-emerald-200 text-emerald-600',
+                    info: 'bg-white/90 border-brand-200 text-brand-600'
+                }
+            };
+            
+            const currentStyles = typeStyles[state.theme][type] || typeStyles[state.theme].info;
+            const icon = type === 'success' ? 'check-circle' : 'info';
+
+            toast.className = `${baseClass} ${currentStyles}`;
+            toast.innerHTML = `<i data-lucide="${icon}" class="w-4 h-4"></i><span>${msg}</span>`;
+            
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            requestAnimationFrame(() => toast.classList.remove('translate-y-3', 'opacity-0'));
+            setTimeout(() => {
+                toast.classList.add('translate-y-3', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // --- View Renderers ---
+        function renderAppShell(contentHtml) {
+            return `
+                <!-- Clean Modern Header -->
+                <header class="h-16 border-b border-slate-200 dark:border-slate-800/50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl sticky top-0 z-30 px-6 flex items-center justify-between transition-colors duration-300">
+                    <div class="flex items-center gap-6">
+                        <!-- Logo -->
+                        <div onclick="navigateTo('/dashboard')" class="flex items-center gap-3 cursor-pointer group">
+                            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-indigo-600 flex items-center justify-center shadow-md group-hover:shadow-brand-500/25 transition-all">
+                                <span class="font-extrabold text-white text-lg">X</span>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="font-bold text-[15px] tracking-tight text-slate-900 dark:text-white leading-tight">${t('app.name')}</span>
+                                <span class="text-[10px] text-brand-600 dark:text-brand-400 font-semibold tracking-wider uppercase">Pro Edition</span>
+                            </div>
+                        </div>
+
+                        <div class="h-5 w-px bg-slate-200 dark:bg-slate-800 hidden md:block"></div>
+
+                        <!-- Context Breadcrumb -->
+                        <div class="hidden md:flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 font-medium">
+                            <i data-lucide="folder" class="w-4 h-4 text-brand-500"></i>
+                            <span>${state.currentRoute.includes('/plan') ? t('header.workspace') : t('dash.title')}</span>
+                        </div>
+                    </div>
+
+                    <!-- Right Controls -->
+                    <div class="flex items-center gap-3">
+                        <!-- Global Toggles -->
+                        <div class="flex items-center bg-slate-100 dark:bg-slate-900 rounded-lg p-1 border border-slate-200 dark:border-slate-800">
+                            <button onclick="toggleLang()" class="p-1.5 rounded-md hover:bg-white dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition shadow-sm" title="Switch Language">
+                                <i data-lucide="languages" class="w-4 h-4"></i>
+                            </button>
+                            <div class="w-px h-4 bg-slate-300 dark:bg-slate-700 mx-1"></div>
+                            <button onclick="toggleTheme()" class="p-1.5 rounded-md hover:bg-white dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition shadow-sm" title="Toggle Theme">
+                                <i data-lucide="${state.theme === 'dark' ? 'sun' : 'moon'}" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+
+                        <!-- Fast Create -->
+                        <button onclick="navigateTo('/create')" class="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-sm hover:opacity-90 transition shadow-lg">
+                            <i data-lucide="plus" class="w-4 h-4"></i>
+                            ${t('header.create')}
+                        </button>
+                        
+                        <!-- Avatar -->
+                        <div class="w-9 h-9 rounded-full bg-slate-200 dark:bg-slate-800 border-2 border-white dark:border-slate-700 flex items-center justify-center text-sm font-bold text-slate-600 dark:text-slate-300 ml-2 shadow-sm cursor-pointer hover:ring-2 hover:ring-brand-500 transition">
+                            AV
+                        </div>
+                    </div>
+                </header>
+
+                <div class="flex-1 flex overflow-hidden">
+                    <!-- Clean Sidebar -->
+                    <aside class="w-16 md:w-56 border-r border-slate-200 dark:border-slate-800/50 bg-white/50 dark:bg-slate-950/50 backdrop-blur-lg flex flex-col p-4 flex-shrink-0 transition-colors duration-300">
+                        <nav class="space-y-1.5">
+                            ${[
+                                { route: '/dashboard', label: t('nav.dashboard'), icon: 'layout-grid' },
+                                { route: '/create', label: t('nav.studio'), icon: 'wand-2' },
+                                { route: '/skills', label: t('nav.skills'), icon: 'cpu' },
+                                { route: '/templates', label: t('nav.templates'), icon: 'layers' },
+                                { route: '/settings', label: t('nav.settings'), icon: 'settings' }
+                            ].map(item => {
+                                const active = state.currentRoute === item.route || (item.route==='/create' && state.currentRoute==='/plan');
+                                return `
+                                    <button onclick="navigateTo('${item.route}')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${active ? 'bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-slate-200'}">
+                                        <i data-lucide="${item.icon}" class="w-[18px] h-[18px] flex-shrink-0 ${active ? 'text-brand-600 dark:text-brand-400' : ''}"></i>
+                                        <span class="hidden md:inline">${item.label}</span>
+                                    </button>
+                                `;
+                            }).join('')}
+                        </nav>
+                        
+                        <!-- Mini Status -->
+                        <div class="hidden md:block mt-auto p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                            <div class="flex justify-between items-center text-xs mb-2">
+                                <span class="text-slate-500 dark:text-slate-400 font-medium">Cloud Cluster</span>
+                                <span class="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-mono">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> 99.9%
+                                </span>
+                            </div>
+                        </div>
+                    </aside>
+
+                    <!-- Main Area -->
+                    <main class="flex-1 overflow-y-auto relative p-6 md:p-8">
+                        <div class="max-w-6xl mx-auto space-y-8">
+                            ${contentHtml}
+                        </div>
+                    </main>
+                </div>
+            `;
+        }
+
+        function renderDashboardPage() {
+            return `
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <h1 class="text-2xl font-bold tracking-tight">${t('dash.title')}</h1>
+                        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">${t('dash.subtitle')}</p>
+                    </div>
+                </div>
+
+                <!-- Stats Grid (Apple/Vercel Style Clean Cards) -->
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    ${[
+                        { title: t('dash.stat1'), val: state.projects.length, icon: 'film', color: 'text-brand-500', bg: 'bg-brand-50 dark:bg-brand-500/10' },
+                        { title: t('dash.stat2'), val: '24', icon: 'zap', color: 'text-purple-500', bg: 'bg-purple-50 dark:bg-purple-500/10' },
+                        { title: t('dash.stat3'), val: '99.8%', icon: 'check-circle', color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
+                        { title: t('dash.stat4'), val: state.coins.toLocaleString(), icon: 'coins', color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-500/10' }
+                    ].map(s => `
+                        <div class="glass-panel p-5 rounded-2xl flex items-center justify-between">
+                            <div>
+                                <div class="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">${s.title}</div>
+                                <div class="text-2xl font-bold font-mono">${s.val}</div>
+                            </div>
+                            <div class="p-3 rounded-xl ${s.bg} ${s.color}">
+                                <i data-lucide="${s.icon}" class="w-5 h-5"></i>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+
+                <!-- Projects -->
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-lg font-bold">${t('dash.recent')}</h3>
+                        <input type="text" placeholder="${t('dash.search')}" class="input-base rounded-xl px-4 py-2 text-sm w-48 shadow-sm">
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        ${state.projects.map(p => `
+                            <div class="glass-panel glass-panel-interactive rounded-2xl overflow-hidden flex flex-col group cursor-pointer" onclick="navigateTo('/plan', {id: '${p.id}'})">
+                                <div class="relative aspect-video bg-slate-200 dark:bg-slate-800 overflow-hidden">
+                                    <img src="${p.thumbnail}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                                    <div class="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent opacity-80"></div>
+                                    <span class="absolute top-3 left-3 px-2.5 py-1 rounded-md text-[10px] font-mono font-bold bg-white/90 dark:bg-slate-900/90 backdrop-blur text-slate-900 dark:text-white shadow-sm border border-slate-200 dark:border-slate-700">
+                                        ${t(p.status === 'FINISHED' ? 'status.finished' : 'status.draft')}
+                                    </span>
+                                </div>
+                                <div class="p-5 flex-1 flex flex-col justify-between">
+                                    <div>
+                                        <h4 class="font-bold text-base group-hover:text-brand-600 dark:group-hover:text-brand-400 transition">${state.lang === 'zh' ? '企业级产品发布会演示' : 'Enterprise Product Keynote'}</h4>
+                                        <p class="text-sm text-slate-500 dark:text-slate-400 mt-2 line-clamp-2">${state.lang === 'zh' ? '打造展示核心能力的旗舰短片，匹配极简风格。' : 'Flagship short film showcasing core capabilities with minimal style.'}</p>
+                                    </div>
+                                    <div class="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs font-medium text-slate-500 dark:text-slate-400">
+                                        <span class="font-mono">${p.updatedAt}</span>
+                                        <span class="text-brand-600 dark:text-brand-400 flex items-center gap-1">${t('dash.enter')} <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i></span>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderCreatePage() {
+            return `
+                <div class="max-w-2xl mx-auto pt-8">
+                    <div class="text-center space-y-3 mb-10">
+                        <div class="inline-flex items-center justify-center p-3 rounded-2xl bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 mb-2">
+                            <i data-lucide="sparkles" class="w-6 h-6"></i>
+                        </div>
+                        <h1 class="text-3xl font-bold tracking-tight">${t('create.title')}</h1>
+                        <p class="text-sm text-slate-500 dark:text-slate-400">${t('create.subtitle')}</p>
+                    </div>
+
+                    <form onsubmit="handleCreateSubmit(event)" class="glass-panel p-8 rounded-3xl space-y-6">
+                        <div>
+                            <label class="block text-sm font-semibold mb-2">${t('create.prompt_label')}</label>
+                            <textarea id="create-prompt" rows="5" required class="w-full input-base rounded-2xl p-4 text-sm leading-relaxed shadow-sm" placeholder="${t('create.prompt_placeholder')}"></textarea>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-semibold mb-2">${t('create.ratio')}</label>
+                                <div class="flex gap-2 p-1 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                                    ${['16:9', '9:16', '1:1'].map(r => `
+                                        <button type="button" onclick="state.activeRatio='${r}'; renderApp();" class="flex-1 py-2 text-xs font-mono font-medium rounded-lg transition ${state.activeRatio === r ? 'bg-white dark:bg-slate-800 shadow-sm text-brand-600 dark:text-brand-400' : 'text-slate-500 dark:text-slate-400'}">
+                                            ${r}
+                                        </button>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold mb-2">${t('create.duration')}</label>
+                                <input type="number" value="30" class="w-full input-base rounded-xl px-4 py-2.5 text-sm font-mono shadow-sm">
+                            </div>
+                        </div>
+
+                        <button id="btn-create" type="submit" class="w-full py-3.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold rounded-xl text-sm hover:opacity-90 transition shadow-lg flex items-center justify-center gap-2">
+                            ${t('create.submit')} <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </button>
+                    </form>
+                </div>
+            `;
+        }
+
+        function handleCreateSubmit(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btn-create');
+            btn.disabled = true;
+            btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Processing...`;
+            lucide.createIcons();
+            
+            setTimeout(() => {
+                navigateTo('/plan', { id: 'proj-1' });
+                showToast('Agent has prepared the project workspace.', 'success');
+            }, 1000);
+        }
+
+        function renderPlanPage() {
+            const proj = state.projects[0];
+            const activeScene = proj.scenes[state.player.currentSceneIndex];
+
+            return `
+                <div class="flex flex-col h-[calc(100vh-10rem)] bg-slate-50 dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+                    
+                    <!-- Pipeline Tracker -->
+                    <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 flex items-center justify-between">
+                        <div class="flex gap-8 text-sm font-medium">
+                            ${[
+                                { s: t('plan.step1'), active: false, done: true },
+                                { s: t('plan.step2'), active: false, done: true },
+                                { s: t('plan.step3'), active: true, done: false },
+                                { s: t('plan.step4'), active: false, done: false }
+                            ].map((step, i) => `
+                                <div class="flex items-center gap-2 ${step.active ? 'text-brand-600 dark:text-brand-400 font-bold' : step.done ? 'text-slate-700 dark:text-slate-300' : 'text-slate-400 dark:text-slate-600'}">
+                                    <div class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${step.active ? 'bg-brand-100 dark:bg-brand-500/20' : step.done ? 'bg-slate-200 dark:bg-slate-800' : 'bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800'}">
+                                        ${step.done ? '✓' : i+1}
+                                    </div>
+                                    ${step.s}
+                                </div>
+                            `).join(`
+                                <div class="w-4 h-px bg-slate-300 dark:bg-slate-700 mt-2.5 mx-[-1rem]"></div>
+                            `)}
+                        </div>
+                        <button onclick="showToast('Starting Render Engine...', 'info')" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-lg text-sm transition shadow-md shadow-brand-500/20">
+                            ${t('plan.render_btn')}
+                        </button>
+                    </div>
+
+                    <!-- 3-Column Workspace -->
+                    <div class="flex-1 flex overflow-hidden">
+                        
+                        <!-- Col 1: Director Brief -->
+                        <div class="w-1/4 min-w-[280px] p-5 border-r border-slate-200 dark:border-slate-800 overflow-y-auto space-y-5 bg-white/50 dark:bg-slate-950/30">
+                            <h4 class="font-bold text-sm flex items-center gap-2">
+                                <i data-lucide="file-text" class="w-4 h-4 text-brand-500"></i> ${t('plan.brief_title')}
+                            </h4>
+                            <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                                ${state.lang === 'zh' ? '针对 B2B 用户的极简 SaaS 产品演示，突出“高效、智能、清晰”的核心价值。使用平滑的 3D 摄像机推进来展现产品界面。' : 'Minimal SaaS demo for B2B users, highlighting efficiency and intelligence. Use smooth 3D camera dollies to present interfaces.'}
+                            </p>
+                            
+                            <h4 class="font-bold text-sm flex items-center gap-2 pt-2">
+                                <i data-lucide="cpu" class="w-4 h-4 text-purple-500"></i> Active Skills
+                            </h4>
+                            <div class="flex flex-wrap gap-2">
+                                ${state.selectedSkills.map(s => `
+                                    <span class="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-mono font-medium shadow-sm">
+                                        ${s}
+                                    </span>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <!-- Col 2: Canvas -->
+                        <div class="flex-1 p-6 flex flex-col justify-center items-center bg-slate-100 dark:bg-[#0b1120]">
+                            <div class="w-full max-w-2xl aspect-video bg-black rounded-2xl overflow-hidden relative shadow-2xl border border-slate-300 dark:border-slate-700 flex items-center justify-center">
+                                <img src="${proj.thumbnail}" class="absolute inset-0 w-full h-full object-cover opacity-40">
+                                
+                                <div class="relative z-10 text-center space-y-4">
+                                    <span class="px-3 py-1 bg-white/10 backdrop-blur rounded-full text-xs font-mono text-white border border-white/20 uppercase tracking-widest">
+                                        Scene ${state.player.currentSceneIndex + 1}
+                                    </span>
+                                    <h3 class="text-2xl font-bold text-white">${activeScene.title}</h3>
+                                </div>
+
+                                <!-- Subtitle -->
+                                <div class="absolute bottom-6 w-full text-center px-8">
+                                    <span class="inline-block px-4 py-2 bg-black/60 backdrop-blur-md rounded-lg text-white font-medium text-sm border border-white/10">
+                                        "${activeScene.voice}"
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <!-- Simple Player Controls -->
+                            <div class="w-full max-w-2xl mt-6 flex items-center gap-4 text-sm font-medium">
+                                <button onclick="togglePlay()" class="w-10 h-10 rounded-full bg-white dark:bg-slate-800 shadow flex items-center justify-center hover:scale-105 transition border border-slate-200 dark:border-slate-700">
+                                    <i data-lucide="${state.player.playing ? 'pause' : 'play'}" class="w-4 h-4 fill-current"></i>
+                                </button>
+                                <div class="flex-1 h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                                    <div class="h-full bg-brand-500" style="width: ${(state.player.currentTime / proj.duration) * 100}%"></div>
+                                </div>
+                                <span class="font-mono text-slate-500">00:${state.player.currentTime.toString().padStart(2,'0')} / 00:${proj.duration}</span>
+                            </div>
+                        </div>
+
+                        <!-- Col 3: Storyboard timeline -->
+                        <div class="w-1/4 min-w-[280px] border-l border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-950/30 flex flex-col">
+                            <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-slate-950">
+                                <h4 class="font-bold text-sm">${t('plan.scene_title')}</h4>
+                                <button class="text-brand-600 dark:text-brand-400 text-xs font-medium hover:underline">${t('plan.add_scene')}</button>
+                            </div>
+                            <div class="flex-1 overflow-y-auto p-4 space-y-3">
+                                ${proj.scenes.map((sc, idx) => `
+                                    <div onclick="state.player.currentSceneIndex=${idx}; renderApp();" class="p-4 rounded-xl border transition cursor-pointer shadow-sm ${state.player.currentSceneIndex === idx ? 'bg-brand-50 dark:bg-brand-900/20 border-brand-300 dark:border-brand-700' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'}">
+                                        <div class="flex justify-between items-center text-sm font-bold mb-2">
+                                            <span>${idx + 1}. ${sc.title}</span>
+                                            <span class="text-xs font-mono text-slate-500 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">${sc.duration}s</span>
+                                        </div>
+                                        <p class="text-xs text-slate-500 dark:text-slate-400 line-clamp-2"><span class="font-semibold text-slate-700 dark:text-slate-300">${t('plan.voice')}:</span> ${sc.voice}</p>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            `;
+        }
+
+        function togglePlay() {
+            state.player.playing = !state.player.playing;
+            if(state.player.playing) {
+                state.player.timer = setInterval(() => {
+                    state.player.currentTime = (state.player.currentTime + 1) % state.projects[0].duration;
+                    renderApp(); // re-render to update progress bar (in a real app, only update the DOM node)
+                }, 1000);
+            } else {
+                clearInterval(state.player.timer);
+            }
+            renderApp();
+        }
+
+        function renderSkillsPage() {
+            return `
+                <h1 class="text-2xl font-bold tracking-tight mb-6">${t('nav.skills')}</h1>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    ${[
+                        { id: 'style.minimal', name: 'Minimal SaaS Style', desc: 'Clean, Apple-like presentation with smooth fonts and glass effects.' },
+                        { id: 'camera.orbit-3d', name: '3D Orbit Camera', desc: 'Smooth cinematic camera panning and zooming in 3D space.' },
+                        { id: 'audio.smart-ducking', name: 'Smart Audio Ducking', desc: 'Automatically lower BGM volume when TTS voiceover plays.' }
+                    ].map(s => `
+                        <div class="glass-panel p-5 rounded-2xl flex flex-col justify-between">
+                            <div>
+                                <h4 class="font-bold text-lg mb-2">${s.name}</h4>
+                                <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">${s.desc}</p>
+                            </div>
+                            <div class="flex justify-between items-center pt-4 border-t border-slate-200 dark:border-slate-800">
+                                <span class="text-xs font-mono text-slate-400">${s.id}</span>
+                                <button class="px-3 py-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-bold rounded-lg shadow">Installed</button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function renderSettingsPage() {
+            return `
+                <h1 class="text-2xl font-bold tracking-tight mb-6">${t('nav.settings')}</h1>
+                <div class="glass-panel p-6 rounded-2xl max-w-2xl">
+                    <h3 class="font-semibold mb-4">Preferences</h3>
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-800">
+                            <span class="text-sm font-medium">Dark Mode Appearance</span>
+                            <button onclick="toggleTheme()" class="text-sm font-medium text-brand-600 dark:text-brand-400 hover:underline">Toggle</button>
+                        </div>
+                        <div class="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-800">
+                            <span class="text-sm font-medium">Language Interface</span>
+                            <button onclick="toggleLang()" class="text-sm font-medium text-brand-600 dark:text-brand-400 hover:underline">Switch to ${state.lang === 'zh' ? 'English' : '中文'}</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function renderGenericPage(title) {
+            return `<h1 class="text-2xl font-bold tracking-tight">${title}</h1><p class="text-slate-500 mt-4">Content coming soon...</p>`;
+        }
+
+        function renderApp() {
+            const app = document.getElementById('app');
+            let contentHtml = '';
+
+            switch (state.currentRoute) {
+                case '/dashboard': contentHtml = renderDashboardPage(); break;
+                case '/create': contentHtml = renderCreatePage(); break;
+                case '/plan': contentHtml = renderPlanPage(); break;
+                case '/skills': contentHtml = renderSkillsPage(); break;
+                case '/settings': contentHtml = renderSettingsPage(); break;
+                case '/assets': contentHtml = renderGenericPage(t('nav.assets')); break;
+                case '/templates': contentHtml = renderGenericPage(t('nav.templates')); break;
+                default: contentHtml = renderDashboardPage();
+            }
+
+            app.innerHTML = renderAppShell(contentHtml);
+            lucide.createIcons();
+        }
+
+        window.onload = () => {
+            renderApp();
+        };
+    </script>
+</body>
+</html>

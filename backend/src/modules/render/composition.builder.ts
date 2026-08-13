@@ -10,6 +10,8 @@ import {
   generateSubtitleCues,
   normalizeCameraType,
   normalizeComponentName,
+  resolveBgmPreset,
+  resolveBgmUrl,
 } from '@xueai/shared'
 import { prisma } from '../../config/database.js'
 import { config } from '../../config/index.js'
@@ -405,6 +407,14 @@ export class CompositionBuilder {
 
     const totalDuration = scenes.reduce((sum, s) => sum + s.duration, 0)
     const musicAsset = project.assets.find((a) => a.type === 'MUSIC' && !a.sceneId)
+    const bgmCategory =
+      project.bgmCategory ?? templateBlueprint?.style?.bgmCategory ?? 'tech_pulse'
+    const bgmPreset = resolveBgmPreset(bgmCategory)
+    const bgmSourceUrl = musicAsset?.url
+      ? musicAsset.url
+      : resolveBgmUrl(bgmCategory, config.bgm.defaultUrl)
+    const bgmVolume =
+      project.bgmVolume ?? templateBlueprint?.style?.bgmVolume ?? bgmPreset.volume ?? 0.22
 
     let templateMeta: VideoCompositionJSON['meta'] | undefined
     if (templateBlueprint) {
@@ -431,8 +441,8 @@ export class CompositionBuilder {
       duration: Math.max(project.duration, totalDuration),
       scenes,
       audio: {
-        backgroundMusic: musicAsset?.url
-          ? { url: resolveAssetUrl(musicAsset.url), volume: project.bgmVolume ?? templateBlueprint?.style?.bgmVolume ?? 0.22 }
+        backgroundMusic: bgmSourceUrl
+          ? { url: resolveAssetUrl(bgmSourceUrl), volume: bgmVolume }
           : undefined,
         soundEffects: soundEffects.length ? soundEffects : undefined,
       },

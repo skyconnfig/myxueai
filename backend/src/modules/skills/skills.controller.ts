@@ -1,7 +1,10 @@
 import type { Request, Response, NextFunction } from 'express'
+import multer from 'multer'
 import { z } from 'zod'
 import { sendSuccess } from '../../utils/response.js'
+import { AppError } from '../../middleware/error-handler.js'
 import { skillUploadService } from './skill-upload.service.js'
+import { skillPackageService } from './skill-package.service.js'
 import { skillManager } from './skill-manager.js'
 import { agentPlanner } from './agent-planner.js'
 import { skillRouter } from './manager/skill-router.js'
@@ -52,6 +55,17 @@ const marketplaceQuerySchema = z.object({
   category: z.string().optional(),
   featured: z.enum(['true', 'false']).optional(),
   search: z.string().optional(),
+})
+
+const packageUploadMetaSchema = z.object({
+  author: z.string().optional(),
+  summary: z.string().optional(),
+  category: z.string().optional(),
+})
+
+const skillUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024, files: 200 },
 })
 
 function paramId(value: string | string[]): string {
@@ -166,6 +180,49 @@ export const skillsController = {
       next(err)
     }
   },
+
+  uploadPackage: [
+    skillUpload.fields([
+      { name: 'archive', maxCount: 1 },
+      { name: 'files', maxCount: 200 },
+    ]),
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const meta = packageUploadMetaSchema.parse(req.body)
+        const files = req.files as { archive?: Express.Multer.File[]; files?: Express.Multer.File[] } | undefined
+        const archive = files?.archive?.[0]
+        const folderFiles = files?.files ?? []
+
+        let entries
+        if (archive) {
+          entries = skillPackageService.extractZip(archive.buffer)
+        } else if (folderFiles.length) {
+          entries = skillPackageService.fromMulterFiles(folderFiles)
+        } else {
+          throw new AppError(400, 'NO_PACKAGE', '请上传 ZIP 压缩包或 Skill 文件夹')
+        }
+
+        const result = await skillPackageService.install(entries, {
+          public: true,
+          author: meta.author || 'Community',
+          summary: meta.summary,
+          category: meta.category || 'community',
+        })
+
+        res.status(201)
+        sendSuccess(res, {
+          packageDir: result.packageDir,
+          installed: result.installed,
+          installedIds: result.installed.map((s) => s.id),
+          skipped: result.skipped,
+          errors: result.errors,
+          total: result.installed.length,
+        })
+      } catch (err) {
+        next(err)
+      }
+    },
+  ],
 
   remove: async (req: Request, res: Response, next: NextFunction) => {
     try {

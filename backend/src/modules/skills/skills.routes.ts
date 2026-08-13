@@ -11,6 +11,7 @@ router.post('/validate', skillsController.validate)
 router.get('/', skillsController.list)
 router.post('/plan', skillsController.plan)
 router.post('/upload', skillsController.upload)
+router.post('/upload-package', ...skillsController.uploadPackage)
 router.get('/:id', skillsController.get)
 router.delete('/:id', skillsController.remove)
 

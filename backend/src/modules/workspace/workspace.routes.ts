@@ -1,5 +1,7 @@
 import { Router } from 'express'
+import { requireAuth } from '../../middleware/auth.js'
 import { sendSuccess } from '../../utils/response.js'
+import { settingsController } from '../settings/settings.controller.js'
 import { taskService } from '../task/task.service.js'
 import { templateService } from '../template/template.service.js'
 import { creditsService } from './credits.service.js'
@@ -7,6 +9,13 @@ import { statsService } from './stats.service.js'
 import { VIDEO_TEMPLATES } from './templates.data.js'
 
 const router = Router()
+
+router.get('/settings/ai', requireAuth, settingsController.getAiProduction)
+router.patch('/settings/ai', requireAuth, ...settingsController.updateAiProduction)
+router.get('/settings/remotion', requireAuth, settingsController.getRemotion)
+router.post('/settings/remotion/refresh', requireAuth, settingsController.refreshRemotion)
+router.post('/settings/remotion/ensure-browser', requireAuth, settingsController.ensureRemotionBrowser)
+router.patch('/settings/remotion', requireAuth, ...settingsController.updateRemotion)
 
 router.get('/summary', async (_req, res, next) => {
   try {

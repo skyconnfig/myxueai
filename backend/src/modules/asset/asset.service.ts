@@ -314,6 +314,7 @@ export class AssetService {
     }
     const useElevenLabs = elevenLabsProvider.isConfigured()
     const useGatewayTts = gatewayTtsProvider.isConfigured()
+    let placeholderVoiceCount = 0
 
     for (let i = 0; i < scenes.length; i++) {
       const scene = scenes[i]
@@ -388,6 +389,11 @@ export class AssetService {
         writeSilentWav(dest, scene.duration || 1)
         url = publicUrl(path.relative(storagePaths.root, dest))
         provider = 'placeholder'
+        placeholderVoiceCount += 1
+        metadata = {
+          ...metadata,
+          ttsWarning: '未配置 TTS_API_KEY 或 ElevenLabs，已写入静音占位音频',
+        }
       }
 
       if (provider !== 'placeholder' && fs.existsSync(dest)) {
@@ -411,6 +417,12 @@ export class AssetService {
         await sceneRepository.update(scene.id, { duration: audioDuration })
       }
       onProgress?.(Math.round(((i + 1) / scenes.length) * 100))
+    }
+
+    if (placeholderVoiceCount > 0) {
+      logger(
+        `Voice generation used ${placeholderVoiceCount} silent placeholder(s) for project ${projectId}. Configure TTS_API_KEY or ELEVENLABS_API_KEY.`,
+      )
     }
   }
 }

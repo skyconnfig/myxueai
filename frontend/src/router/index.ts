@@ -24,7 +24,7 @@ const routes: RouteRecordRaw[] = [
         path: '',
         name: 'dashboard',
         component: () => import('@/views/Dashboard.vue'),
-        meta: { title: '首页' },
+        meta: { title: '项目控制中心' },
       },
       {
         path: 'create',
@@ -66,13 +66,31 @@ const routes: RouteRecordRaw[] = [
         path: 'templates',
         name: 'templates',
         component: () => import('@/views/Templates.vue'),
-        meta: { title: '模板市场' },
+        meta: { title: '视频模板' },
       },
       {
         path: 'skills',
         name: 'skills-marketplace',
         component: () => import('@/views/SkillsMarketplace.vue'),
         meta: { title: 'Skill 市场' },
+      },
+      {
+        path: 'analytics',
+        name: 'analytics',
+        component: () => import('@/views/Analytics.vue'),
+        meta: { title: '生产统计' },
+      },
+      {
+        path: 'publish',
+        name: 'publish',
+        component: () => import('@/views/Publish.vue'),
+        meta: { title: '分发中心' },
+      },
+      {
+        path: 'projects/:id/review',
+        name: 'review',
+        component: () => import('@/views/Review.vue'),
+        meta: { title: 'AI 审片' },
       },
       {
         path: 'settings',

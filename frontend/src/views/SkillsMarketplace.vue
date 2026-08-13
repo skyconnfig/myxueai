@@ -23,9 +23,9 @@ import {
   matchSkills,
   saveSelectedSkillIds,
   toggleSelectedSkillId,
-  uploadSkill,
-  validateSkillContent,
+  uploadSkillPackage,
 } from '@/api/skills'
+import SkillDetailDrawer from '@/components/studio/SkillDetailDrawer.vue'
 
 const router = useRouter()
 const message = useMessage()
@@ -45,10 +45,18 @@ const matchResult = ref<string[]>([])
 const matching = ref(false)
 
 const showUpload = ref(false)
-const uploadContent = ref('')
+const showDetail = ref(false)
+const detailListing = ref<SkillMarketplaceListing | null>(null)
 const uploadAuthor = ref('')
 const uploadSummary = ref('')
 const uploading = ref(false)
+const packageLabel = ref('')
+const packageFiles = ref<File[]>([])
+const packageArchive = ref<File | null>(null)
+const uploadResult = ref<{ installedIds: string[]; errors: Array<{ path: string; message: string }> } | null>(null)
+const zipInputRef = ref<HTMLInputElement | null>(null)
+const folderInputRef = ref<HTMLInputElement | null>(null)
+const dragActive = ref(false)
 
 const categoryOptions = computed(() =>
   categories.value.map((c) => ({ label: c.name, value: c.id })),
@@ -152,6 +160,11 @@ function promptForSkill(item: SkillMarketplaceListing): string {
   return `使用 ${item.name} 制作视频`
 }
 
+function openDetail(item: SkillMarketplaceListing) {
+  detailListing.value = item
+  showDetail.value = true
+}
+
 function goCreateWithSelected() {
   if (!selectedIds.value.length) {
     message.warning('请先选择至少一个 Skill')
@@ -175,35 +188,89 @@ async function runMatch() {
   }
 }
 
+function resetUploadState() {
+  uploadAuthor.value = ''
+  uploadSummary.value = ''
+  packageLabel.value = ''
+  packageFiles.value = []
+  packageArchive.value = null
+  uploadResult.value = null
+  dragActive.value = false
+  if (zipInputRef.value) zipInputRef.value.value = ''
+  if (folderInputRef.value) folderInputRef.value.value = ''
+}
+
+function openUploadModal() {
+  resetUploadState()
+  showUpload.value = true
+}
+
+function setArchive(file: File) {
+  packageArchive.value = file
+  packageFiles.value = []
+  packageLabel.value = file.name
+  uploadResult.value = null
+}
+
+function setFolderFiles(files: FileList | File[]) {
+  const list = Array.from(files)
+  packageFiles.value = list
+  packageArchive.value = null
+  const first = list[0] as File & { webkitRelativePath?: string }
+  const root = first?.webkitRelativePath?.split('/')[0]
+  packageLabel.value = root ? `文件夹：${root}（${list.length} 个文件）` : `文件夹（${list.length} 个文件）`
+  uploadResult.value = null
+}
+
+function onZipPick(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (file) setArchive(file)
+}
+
+function onFolderPick(event: Event) {
+  const input = event.target as HTMLInputElement
+  if (input.files?.length) setFolderFiles(input.files)
+}
+
+function onDrop(event: DragEvent) {
+  dragActive.value = false
+  const file = event.dataTransfer?.files?.[0]
+  if (!file) return
+  if (file.name.toLowerCase().endsWith('.zip')) {
+    setArchive(file)
+    return
+  }
+  message.warning('请将 Skill 文件夹打包为 ZIP 后拖拽上传，或使用「选择文件夹」')
+}
+
 async function handleUpload() {
-  if (!uploadContent.value.trim()) {
-    message.warning('请粘贴 Skill YAML/JSON 内容')
+  if (!packageArchive.value && !packageFiles.value.length) {
+    message.warning('请选择 ZIP 压缩包或 Skill 文件夹')
     return
   }
   uploading.value = true
+  uploadResult.value = null
   try {
-    const validation = await validateSkillContent({ content: uploadContent.value, format: 'yaml' })
-    if (!validation.ok) {
-      message.error(validation.errors.map((e) => e.message).join('; '))
-      return
-    }
-    await uploadSkill({
-      content: uploadContent.value,
-      format: 'yaml',
-      marketplace: {
-        public: true,
-        author: uploadAuthor.value || 'Community',
-        summary: uploadSummary.value || undefined,
-        category: 'community',
-      },
+    const result = await uploadSkillPackage({
+      archive: packageArchive.value ?? undefined,
+      files: packageFiles.value.length ? packageFiles.value : undefined,
+      author: uploadAuthor.value || undefined,
+      summary: uploadSummary.value || undefined,
     })
-    message.success('Skill 上传成功')
-    showUpload.value = false
-    uploadContent.value = ''
+    uploadResult.value = {
+      installedIds: result.installedIds,
+      errors: result.errors,
+    }
+    message.success(`已安装 ${result.total} 个 Skill`)
     await loadUser()
     tab.value = 'mine'
+    if (!result.errors.length) {
+      showUpload.value = false
+      resetUploadState()
+    }
   } catch (err) {
-    message.error(err instanceof Error ? err.message : '上传失败')
+    message.error(err instanceof Error ? err.message : '安装失败')
   } finally {
     uploading.value = false
   }
@@ -238,7 +305,7 @@ async function removeUserSkill(id: string) {
       <div class="flex flex-wrap gap-2 shrink-0">
         <button
           class="btn-soft px-4 py-2 rounded-xl text-sm flex items-center gap-2"
-          @click="showUpload = true"
+          @click="openUploadModal"
         >
           <Upload class="w-4 h-4" />
           上传 Skill
@@ -345,6 +412,12 @@ async function removeUserSkill(id: string) {
                 <ArrowRight class="w-3.5 h-3.5" />
               </button>
               <button
+                class="px-3 py-2 rounded-lg text-xs border border-border text-muted hover:text-white"
+                @click.stop="openDetail(item)"
+              >
+                详情
+              </button>
+              <button
                 class="px-3 py-2 rounded-lg text-xs border border-border"
                 :class="isSelected(item.id) ? 'text-accent-blue border-accent-blue/50' : 'text-muted'"
                 @click.stop="toggleSelect(item.id)"
@@ -386,25 +459,93 @@ async function removeUserSkill(id: string) {
       </NTabPane>
     </NTabs>
 
-    <NModal v-model:show="showUpload" preset="card" title="上传自定义 Skill" class="max-w-2xl">
+    <NModal v-model:show="showUpload" preset="card" title="上传 Skill 包" class="max-w-2xl">
       <div class="space-y-4">
-        <p class="text-xs text-muted m-0">粘贴 YAML Skill 定义，上传后 Agent 可在生成视频时调用。</p>
+        <p class="text-xs text-muted m-0">
+          支持 ZIP 压缩包或 Skill 文件夹，系统会自动识别包内的 YAML/JSON Skill 定义并安装。
+        </p>
+
+        <div
+          class="rounded-xl border border-dashed p-6 text-center transition-colors"
+          :class="dragActive ? 'border-accent-blue bg-accent-blue/5' : 'border-border bg-card/40'"
+          @dragover.prevent="dragActive = true"
+          @dragleave.prevent="dragActive = false"
+          @drop.prevent="onDrop"
+        >
+          <Upload class="w-8 h-8 mx-auto text-muted mb-3" />
+          <p class="text-sm text-white m-0 mb-1">拖拽 ZIP 到此处，或选择上传方式</p>
+          <p class="text-[11px] text-muted m-0 mb-4">自动扫描 .yaml / .yml / .json Skill 定义并安装</p>
+          <div class="flex flex-wrap justify-center gap-2">
+            <button
+              type="button"
+              class="btn-soft px-4 py-2 rounded-lg text-xs"
+              @click="zipInputRef?.click()"
+            >
+              选择 ZIP
+            </button>
+            <button
+              type="button"
+              class="btn-soft px-4 py-2 rounded-lg text-xs"
+              @click="folderInputRef?.click()"
+            >
+              选择文件夹
+            </button>
+          </div>
+          <input
+            ref="zipInputRef"
+            type="file"
+            accept=".zip,application/zip"
+            class="hidden"
+            @change="onZipPick"
+          />
+          <input
+            ref="folderInputRef"
+            type="file"
+            class="hidden"
+            webkitdirectory
+            directory
+            multiple
+            @change="onFolderPick"
+          />
+        </div>
+
+        <div
+          v-if="packageLabel"
+          class="rounded-lg border border-border bg-card px-3 py-2 text-xs text-white flex items-center justify-between gap-2"
+        >
+          <span class="truncate">{{ packageLabel }}</span>
+          <button type="button" class="text-muted hover:text-white shrink-0" @click="resetUploadState">
+            清除
+          </button>
+        </div>
+
         <NInput v-model:value="uploadAuthor" placeholder="作者名（可选）" />
         <NInput v-model:value="uploadSummary" placeholder="简介（可选）" />
-        <textarea
-          v-model="uploadContent"
-          rows="14"
-          class="w-full p-3 rounded-xl bg-card border border-border text-xs font-mono text-white outline-none focus:border-accent-blue/50"
-          placeholder="id: user.my-skill&#10;kind: hook&#10;..."
-        />
+
+        <div v-if="uploadResult" class="rounded-lg border border-border bg-card p-3 space-y-2">
+          <p class="text-xs text-success m-0">已安装：{{ uploadResult.installedIds.join(', ') }}</p>
+          <div v-if="uploadResult.errors.length" class="space-y-1">
+            <p class="text-xs text-warning m-0">部分文件未识别为 Skill：</p>
+            <p
+              v-for="item in uploadResult.errors.slice(0, 5)"
+              :key="item.path"
+              class="text-[10px] text-muted m-0 font-mono"
+            >
+              {{ item.path }} — {{ item.message }}
+            </p>
+          </div>
+        </div>
+
         <button
           class="btn-ai-gradient w-full py-2.5 rounded-xl text-sm font-semibold"
-          :disabled="uploading"
+          :disabled="uploading || (!packageArchive && !packageFiles.length)"
           @click="handleUpload"
         >
-          {{ uploading ? '上传中...' : '验证并上传' }}
+          {{ uploading ? '识别并安装中...' : '验证并安装' }}
         </button>
       </div>
     </NModal>
+
+    <SkillDetailDrawer v-model:show="showDetail" :listing="detailListing" @use="useSkill" />
   </div>
 </template>

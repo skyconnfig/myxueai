@@ -12,11 +12,13 @@ import {
   Rocket,
   Settings,
 } from 'lucide-vue-next'
+import { usePreferences } from '@/composables/usePreferences'
 import { useWorkspaceStore } from '@/stores/workspace'
 
 const route = useRoute()
 const router = useRouter()
 const workspaceStore = useWorkspaceStore()
+const { t } = usePreferences()
 
 onMounted(() => {
   void workspaceStore.loadSummary()
@@ -24,7 +26,7 @@ onMounted(() => {
 
 interface NavItem {
   key: string
-  label: string
+  labelKey: 'nav.dashboard' | 'nav.studio' | 'nav.skills' | 'nav.templates' | 'nav.settings' | 'nav.assets' | 'nav.publish' | 'nav.analytics'
   icon: typeof Clapperboard
   route: string
 }
@@ -38,28 +40,28 @@ const navGroups: NavGroup[] = [
   {
     title: '创作',
     items: [
-      { key: 'studio', label: 'AI Studio', icon: Clapperboard, route: 'create-video' },
-      { key: 'dashboard', label: '项目中心', icon: FolderKanban, route: 'dashboard' },
+      { key: 'dashboard', labelKey: 'nav.dashboard', icon: FolderKanban, route: 'dashboard' },
+      { key: 'studio', labelKey: 'nav.studio', icon: Clapperboard, route: 'create-video' },
     ],
   },
   {
     title: '内容资产',
     items: [
-      { key: 'assets', label: '素材库', icon: Layers, route: 'assets' },
-      { key: 'templates', label: '模板库', icon: LayoutTemplate, route: 'templates' },
-      { key: 'skills', label: 'Skill 市场', icon: Brain, route: 'skills-marketplace' },
+      { key: 'skills', labelKey: 'nav.skills', icon: Brain, route: 'skills-marketplace' },
+      { key: 'templates', labelKey: 'nav.templates', icon: LayoutTemplate, route: 'templates' },
+      { key: 'assets', labelKey: 'nav.assets', icon: Layers, route: 'assets' },
     ],
   },
   {
     title: '增长',
     items: [
-      { key: 'publish', label: '分发中心', icon: Rocket, route: 'dashboard' },
-      { key: 'analytics', label: '生产统计', icon: BarChart3, route: 'dashboard' },
+      { key: 'publish', labelKey: 'nav.publish', icon: Rocket, route: 'publish' },
+      { key: 'analytics', labelKey: 'nav.analytics', icon: BarChart3, route: 'analytics' },
     ],
   },
   {
     title: '系统',
-    items: [{ key: 'settings', label: '设置', icon: Settings, route: 'settings' }],
+    items: [{ key: 'settings', labelKey: 'nav.settings', icon: Settings, route: 'settings' }],
   },
 ]
 
@@ -70,6 +72,8 @@ const activeKey = computed(() => {
   if (name === 'assets') return 'assets'
   if (name === 'templates') return 'templates'
   if (name === 'skills-marketplace') return 'skills'
+  if (name === 'analytics') return 'analytics'
+  if (name === 'publish') return 'publish'
   if (name === 'settings') return 'settings'
   return 'dashboard'
 })
@@ -107,7 +111,7 @@ function navClass(key: string) {
               class="w-4 h-4 shrink-0"
               :class="activeKey === item.key ? 'text-accent-blue' : ''"
             />
-            <span>{{ item.label }}</span>
+            <span>{{ t(item.labelKey) }}</span>
           </button>
         </nav>
       </div>
@@ -120,10 +124,13 @@ function navClass(key: string) {
             <HardDrive class="w-3.5 h-3.5 text-accent-blue" />
             存储
           </span>
-          <span class="font-mono text-muted">12%</span>
+          <span class="font-mono text-muted">{{ Math.min(99, Math.round((workspaceStore.assetCount / 1000) * 100) || 12) }}%</span>
         </div>
         <div class="w-full bg-surface h-1 rounded-full overflow-hidden">
-          <div class="bg-accent-blue h-full w-[12%]" />
+          <div
+            class="bg-accent-blue h-full"
+            :style="{ width: `${Math.min(99, Math.round((workspaceStore.assetCount / 1000) * 100) || 12)}%` }"
+          />
         </div>
         <div class="mt-2 flex items-center justify-between text-[11px]">
           <span class="text-muted">AI 点数</span>

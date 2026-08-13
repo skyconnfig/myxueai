@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useMessage } from 'naive-ui'
-import { Film, Image as ImageIcon, Layers, Music, Search, Upload } from 'lucide-vue-next'
+import { useMessage, NModal } from 'naive-ui'
+import { Film, Image as ImageIcon, Layers, Music, Play, Search, Upload, X } from 'lucide-vue-next'
 import type { AssetDto } from '@xueai/shared'
 import { deleteAsset, fetchAssets, uploadAsset } from '@/api/asset'
 
@@ -13,6 +13,8 @@ const loading = ref(true)
 const uploading = ref(false)
 const searchTerm = ref('')
 const activeTab = ref<'all' | 'IMAGE' | 'AUDIO' | 'VIDEO'>('all')
+const previewAsset = ref<AssetDto | null>(null)
+const showPreview = ref(false)
 
 const filtered = computed(() =>
   assets.value.filter((a) => {
@@ -53,6 +55,7 @@ async function onFileChange(event: Event) {
     })
     assets.value.unshift(asset)
     message.success('上传成功')
+    openPreview(asset)
   } catch (err) {
     message.error(err instanceof Error ? err.message : '上传失败')
   } finally {
@@ -80,6 +83,16 @@ async function handleDelete(asset: AssetDto) {
 
 function assetTitle(asset: AssetDto) {
   return (asset.metadata?.originalName as string) ?? asset.url.split('/').pop() ?? asset.id
+}
+
+function openPreview(asset: AssetDto) {
+  previewAsset.value = asset
+  showPreview.value = true
+}
+
+function closePreview() {
+  showPreview.value = false
+  previewAsset.value = null
 }
 
 onMounted(loadAssets)
@@ -141,7 +154,8 @@ onMounted(loadAssets)
       <div
         v-for="asset in filtered"
         :key="asset.id"
-        class="pro-card overflow-hidden group hover:border-accent-blue/40 transition-all"
+        class="pro-card overflow-hidden group hover:border-accent-blue/40 transition-all cursor-pointer"
+        @click="openPreview(asset)"
       >
         <div class="aspect-square bg-dark flex items-center justify-center relative overflow-hidden">
           <img
@@ -150,7 +164,32 @@ onMounted(loadAssets)
             :alt="assetTitle(asset)"
             class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
+          <video
+            v-else-if="asset.type === 'VIDEO'"
+            :src="asset.url"
+            class="w-full h-full object-cover"
+            muted
+            preload="metadata"
+            playsinline
+          />
+          <div
+            v-else-if="asset.type === 'AUDIO'"
+            class="w-full h-full flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-card to-dark"
+          >
+            <Music class="w-10 h-10 text-accent-blue/70" />
+            <span class="text-[10px] text-muted font-mono">AUDIO</span>
+          </div>
           <component :is="typeIcons[asset.type] ?? ImageIcon" v-else class="w-8 h-8 text-border" />
+
+          <div
+            v-if="asset.type === 'VIDEO' || asset.type === 'AUDIO'"
+            class="absolute inset-0 flex items-center justify-center bg-dark/30 opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <span class="w-10 h-10 rounded-full bg-accent-blue/90 flex items-center justify-center">
+              <Play class="w-4 h-4 text-white fill-white ml-0.5" />
+            </span>
+          </div>
+
           <span class="absolute top-2 left-2 px-1.5 py-0.5 glass-panel text-[9px] font-mono text-muted rounded">
             {{ asset.type }}
           </span>
@@ -168,5 +207,54 @@ onMounted(loadAssets)
         </div>
       </div>
     </div>
+
+    <NModal
+      v-model:show="showPreview"
+      preset="card"
+      class="max-w-3xl"
+      :title="previewAsset ? assetTitle(previewAsset) : '素材预览'"
+      @after-leave="previewAsset = null"
+    >
+      <div v-if="previewAsset" class="space-y-4">
+        <div class="rounded-xl overflow-hidden bg-dark border border-border min-h-[200px] flex items-center justify-center">
+          <img
+            v-if="previewAsset.type === 'IMAGE'"
+            :src="previewAsset.url"
+            :alt="assetTitle(previewAsset)"
+            class="max-h-[60vh] w-full object-contain"
+          />
+          <video
+            v-else-if="previewAsset.type === 'VIDEO'"
+            :key="previewAsset.id"
+            :src="previewAsset.url"
+            class="max-h-[60vh] w-full"
+            controls
+            autoplay
+            playsinline
+          />
+          <div v-else-if="previewAsset.type === 'AUDIO'" class="w-full p-8 space-y-4">
+            <div class="flex items-center justify-center">
+              <Music class="w-16 h-16 text-accent-blue/80" />
+            </div>
+            <audio
+              :key="previewAsset.id"
+              :src="previewAsset.url"
+              class="w-full"
+              controls
+              autoplay
+            />
+          </div>
+          <div v-else class="text-sm text-muted py-12">暂不支持预览此类型</div>
+        </div>
+
+        <div class="flex items-center justify-between gap-3 text-xs text-muted">
+          <span class="font-mono truncate">{{ previewAsset.url }}</span>
+          <button type="button" class="btn-soft !h-8 !px-3 shrink-0" @click="closePreview">
+            <X class="w-3.5 h-3.5" />
+            关闭
+          </button>
+        </div>
+      </div>
+    </NModal>
   </div>
 </template>

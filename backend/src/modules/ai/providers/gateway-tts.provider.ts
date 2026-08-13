@@ -73,7 +73,7 @@ export class GatewayTtsProvider {
     const volume = options?.volume ?? config.tts.volume
 
     const buffer = this.isMinimaxModel()
-      ? await this.generateMinimax(trimmed, { voiceId, speed, pitch, volume })
+      ? await this.generateMinimaxWithFallback(trimmed, { voiceId, speed, pitch, volume })
       : await this.generateOpenAiSpeech(trimmed, voiceId)
 
     if (buffer.length < 128) {
@@ -98,13 +98,17 @@ export class GatewayTtsProvider {
   }
 
   /** OpenAI-compatible sync TTS: tts-1 / gpt-4o-mini-tts */
-  private async generateOpenAiSpeech(text: string, voice = config.tts.openAiVoice): Promise<Buffer> {
+  private async generateOpenAiSpeech(
+    text: string,
+    voice = config.tts.openAiVoice,
+    model = config.tts.model,
+  ): Promise<Buffer> {
     const baseUrl = config.tts.baseUrl.replace(/\/$/, '')
     const response = await fetch(`${baseUrl}/audio/speech`, {
       method: 'POST',
       headers: this.authHeaders(),
       body: JSON.stringify({
-        model: config.tts.model,
+        model,
         input: text.slice(0, 5000),
         voice,
       }),
@@ -116,6 +120,23 @@ export class GatewayTtsProvider {
     }
 
     return Buffer.from(await response.arrayBuffer())
+  }
+
+  /** Minimax async TTS via xueai gateway: speech-2.8-hd 等 */
+  private async generateMinimaxWithFallback(
+    text: string,
+    settings: { voiceId: string; speed: number; pitch: number; volume: number },
+  ): Promise<Buffer> {
+    try {
+      return await this.generateMinimax(text, settings)
+    } catch (error) {
+      logger(
+        `Minimax TTS failed, trying OpenAI-compatible speech fallback: ${
+          error instanceof Error ? error.message : error
+        }`,
+      )
+      return this.generateOpenAiSpeech(text, config.tts.openAiVoice, 'tts-1')
+    }
   }
 
   /** Minimax async TTS via xueai gateway: speech-2.8-hd 等 */

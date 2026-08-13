@@ -69,9 +69,13 @@ export const CompositionManager: React.FC<CompositionManagerProps> = ({ composit
     }
   })
 
+  const hasSceneVoice = timeline.some((entry) => Boolean(entry.scene.audio?.voiceUrl))
+  const hasDeclarativeSfx = Boolean(composition.audio?.audio?.length)
+  const useAudioEngine = hasSceneVoice || hasDeclarativeSfx
+
   return (
     <AbsoluteFill style={{ backgroundColor: '#05070A' }}>
-      {composition.audio?.audio?.length ? (
+      {useAudioEngine ? (
         <AudioEngine composition={composition} sceneTimeline={timeline} />
       ) : (
         <CompositionAudio audio={composition.audio} duckingPlan={duckingPlan} />

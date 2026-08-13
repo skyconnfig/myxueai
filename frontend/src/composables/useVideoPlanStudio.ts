@@ -147,6 +147,8 @@ export function useVideoPlanStudio() {
   const generationNotice = ref<string | null>(null)
   const showAssetPicker = ref(false)
   const scriptSource = ref<'llm' | 'preset' | null>(null)
+  const agentPlan = ref<{ category: string; style: string; duration: number; skills: string[] } | null>(null)
+  const activeSkillIds = ref<string[]>(loadSelectedSkillIds())
 
   const project = computed(() => {
     if (isDemoProject.value) {
@@ -402,6 +404,8 @@ export function useVideoPlanStudio() {
   watch(projectId, () => {
     selectedSceneId.value = ''
     scriptSource.value = null
+    agentPlan.value = null
+    activeSkillIds.value = loadSelectedSkillIds()
     void loadProjectData()
   })
 
@@ -533,6 +537,12 @@ export function useVideoPlanStudio() {
       })
       projectStore.currentProject = result.project
       scriptSource.value = result.source
+      agentPlan.value = result.agentPlan ?? null
+      activeSkillIds.value = result.skills?.length
+        ? result.skills
+        : result.agentPlan?.skills?.length
+          ? result.agentPlan.skills
+          : loadSelectedSkillIds()
       activeStep.value = 'storyboard'
       if (result.project.scenes[0]) selectedSceneId.value = result.project.scenes[0].id
       const sourceLabel = result.source === 'llm' ? 'DeepSeek AI' : '智能预设'
@@ -902,6 +912,8 @@ export function useVideoPlanStudio() {
     generationNotice,
     showAssetPicker,
     scriptSource,
+    agentPlan,
+    activeSkillIds,
     project,
     selectedScene,
     totalDuration,

@@ -21,6 +21,13 @@ export interface ProductionErrorMeta {
   timestamp: string
 }
 
+export interface ProductionAudioMeta {
+  hasVoice: boolean
+  hasBgm: boolean
+  placeholderVoiceCount: number
+  ttsConfigured: boolean
+}
+
 export interface ProductionStatus {
   projectId: string
   projectName: string
@@ -43,6 +50,7 @@ export interface ProductionStatus {
   creditsBalance?: number
   videoUrl?: string | null
   renderId?: string | null
+  audioMeta?: ProductionAudioMeta | null
 }
 
 export function fetchProductionStatus(projectId: string, tick = true) {

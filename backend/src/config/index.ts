@@ -46,7 +46,7 @@ export const config = {
     model: process.env.ELEVENLABS_MODEL ?? 'eleven_multilingual_v2',
   },
   tts: {
-    apiKey: process.env.TTS_API_KEY ?? process.env.LLM_API_KEY ?? process.env.OPENAI_API_KEY ?? '',
+    apiKey: process.env.TTS_API_KEY ?? '',
     baseUrl: process.env.TTS_BASE_URL ?? process.env.LLM_BASE_URL ?? 'https://api.xueai.me/v1',
     minimaxBaseUrl:
       process.env.TTS_MINIMAX_BASE_URL ??
@@ -75,7 +75,9 @@ export const config = {
     baseUrl: process.env.TWELVELABS_BASE_URL ?? 'https://api.twelvelabs.io/v1.3',
   },
   bgm: {
-    defaultUrl: process.env.BGM_DEFAULT_URL ?? '',
+    defaultUrl:
+      process.env.BGM_DEFAULT_URL ??
+      'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
   },
   jwt: {
     secret: process.env.JWT_SECRET ?? 'xueai-dev-secret-change-in-production',

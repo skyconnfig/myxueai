@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMessage } from 'naive-ui'
-import { CheckCircle2, ChevronRight, Circle, Download, Loader2, Sparkles, XCircle } from 'lucide-vue-next'
+import { CheckCircle2, ChevronRight, Circle, Download, Loader2, Radio, Sparkles, Volume2, XCircle } from 'lucide-vue-next'
 import {
   cancelProduction,
   fetchProductionStatus,
@@ -28,6 +28,19 @@ const retrying = ref(false)
 const cancelling = ref(false)
 const error = ref<string | null>(null)
 const completedNotified = ref(false)
+const wsConnected = ref(false)
+
+const audioWarning = computed(() => {
+  const meta = status.value?.audioMeta
+  if (!meta) return null
+  if (!meta.ttsConfigured) {
+    return '未配置 TTS_API_KEY / ElevenLabs，配音将为静音占位。请在 backend/.env 配置后重新生产。'
+  }
+  if (meta.placeholderVoiceCount > 0) {
+    return `${meta.placeholderVoiceCount} 个分镜使用了静音占位配音，请检查 TTS 配置并重试生产。`
+  }
+  return null
+})
 
 const STAGES = [
   { id: 'DIRECTOR', label: '① AI 导演' },
@@ -148,7 +161,10 @@ async function handleCancel() {
   }
 }
 
-useProjectWebSocket(projectId, applyStatus, handleWsEvent, loadStatus)
+const { connected: wsConnectedRef } = useProjectWebSocket(projectId, applyStatus, handleWsEvent, loadStatus)
+watch(wsConnectedRef, (value) => {
+  wsConnected.value = value
+}, { immediate: true })
 
 let pollTimer: number | undefined
 
@@ -173,22 +189,39 @@ onUnmounted(() => {
         <span class="text-sm font-semibold text-white">AI 生产流水线</span>
         <span class="text-[10px] font-mono text-muted truncate max-w-[200px]">{{ status?.projectName ?? projectId }}</span>
       </div>
-      <span
-        v-if="status"
-        class="px-2 py-0.5 text-[10px] font-mono rounded-lg flex items-center gap-1"
-        :class="
-          status.isComplete
-            ? 'bg-success/10 border border-success/30 text-success'
-            : isFailed
-              ? 'bg-danger/10 border border-danger/30 text-danger'
-              : status.isProcessing
-                ? 'bg-accent-blue/10 border border-accent-blue/30 text-accent-blue'
-                : 'bg-card border border-border text-muted'
-        "
-      >
-        <Loader2 v-if="status.isProcessing" class="w-3 h-3 animate-spin" />
-        {{ status.isComplete ? '已完成' : isFailed ? failedTitle : status.isProcessing ? '处理中' : '准备中' }}
-      </span>
+      <div class="flex items-center gap-2">
+        <span
+          class="px-2 py-0.5 text-[10px] font-mono rounded-lg flex items-center gap-1"
+          :class="wsConnected ? 'bg-success/10 border border-success/30 text-success' : 'bg-card border border-border text-muted'"
+        >
+          <Radio class="w-3 h-3" />
+          {{ wsConnected ? '实时 WS' : '轮询' }}
+        </span>
+        <span
+          v-if="status"
+          class="px-2 py-0.5 text-[10px] font-mono rounded-lg flex items-center gap-1"
+          :class="
+            status.isComplete
+              ? 'bg-success/10 border border-success/30 text-success'
+              : isFailed
+                ? 'bg-danger/10 border border-danger/30 text-danger'
+                : status.isProcessing
+                  ? 'bg-accent-blue/10 border border-accent-blue/30 text-accent-blue'
+                  : 'bg-card border border-border text-muted'
+          "
+        >
+          <Loader2 v-if="status.isProcessing" class="w-3 h-3 animate-spin" />
+          {{ status.isComplete ? '已完成' : isFailed ? failedTitle : status.isProcessing ? '处理中' : '准备中' }}
+        </span>
+      </div>
+    </div>
+
+    <div
+      v-if="audioWarning"
+      class="mx-4 mt-2 px-4 py-2.5 rounded-xl border border-warning/40 bg-warning/10 text-warning text-xs flex items-start gap-2 shrink-0"
+    >
+      <Volume2 class="w-4 h-4 shrink-0 mt-0.5" />
+      <span>{{ audioWarning }}</span>
     </div>
 
     <div class="shrink-0 px-6 py-3 flex items-center gap-1 overflow-x-auto">
@@ -333,6 +366,14 @@ onUnmounted(() => {
           auto-review
           @rerender-started="loadStatus"
         />
+        <button
+          v-if="status.isComplete && isMp4"
+          type="button"
+          class="btn-soft w-full !h-9 !text-xs shrink-0"
+          @click="router.push({ name: 'review', params: { id: projectId } })"
+        >
+          打开完整审片页 →
+        </button>
 
         <div class="glass-panel flex flex-col overflow-hidden flex-1 min-h-0">
           <div class="px-4 py-3 border-b border-border text-[11px] font-mono font-semibold text-muted uppercase">实时日志</div>

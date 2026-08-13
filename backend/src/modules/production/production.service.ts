@@ -124,6 +124,29 @@ export class ProductionService {
     return logs
   }
 
+  private async buildAudioMeta(projectId: string) {
+    const project = await projectRepository.findById(projectId)
+    if (!project) {
+      return { hasVoice: false, hasBgm: false, placeholderVoiceCount: 0, ttsConfigured: false }
+    }
+    const audioAssets = project.assets.filter((a) => a.type === 'AUDIO')
+    const placeholderVoiceCount = audioAssets.filter((a) => a.provider === 'placeholder').length
+    const hasVoice = audioAssets.some((a) => a.provider !== 'placeholder')
+    const hasBgm = Boolean(
+      project.assets.some((a) => a.type === 'MUSIC') ||
+        project.bgmCategory ||
+        config.bgm.defaultUrl,
+    )
+    const useElevenLabs = Boolean(config.elevenLabs.apiKey)
+    const useGatewayTts = Boolean(config.tts.apiKey)
+    return {
+      hasVoice,
+      hasBgm,
+      placeholderVoiceCount,
+      ttsConfigured: useElevenLabs || useGatewayTts,
+    }
+  }
+
   async getStatus(projectId: string) {
     const project = await projectRepository.findById(projectId)
     if (!project) throw new AppError(404, 'PROJECT_NOT_FOUND', 'Project not found')
@@ -131,6 +154,7 @@ export class ProductionService {
     const credits = await creditsService.getBalance()
 
     if (!job) {
+      const audioMeta = await this.buildAudioMeta(projectId)
       return {
         projectId, projectName: project.name, projectStatus: project.status,
         overallProgress: 0, isComplete: project.status === ProjectStatus.COMPLETED, isProcessing: false,
@@ -138,7 +162,7 @@ export class ProductionService {
         steps: this.buildStepsView(null), elapsedMs: null, etaMs: null,
         error: null, errorMeta: null,
         logs: [{ time: fmt(new Date()), message: '等待启动生产流水线...' }],
-        credits, videoUrl: project.videoUrl, renderId: null,
+        credits, videoUrl: project.videoUrl, renderId: null, audioMeta,
       }
     }
 
@@ -151,6 +175,8 @@ export class ProductionService {
       etaMs = Math.round((elapsedMs / job.progress) * (100 - job.progress))
     }
 
+    const audioMeta = await this.buildAudioMeta(projectId)
+
     return {
       projectId, projectName: project.name,
       projectStatus: isComplete ? ProjectStatus.COMPLETED : project.status,
@@ -159,6 +185,7 @@ export class ProductionService {
       steps: this.buildStepsView(job), elapsedMs, etaMs,
       error: job.error, errorMeta: (job.errorMeta as ProductionErrorMeta | null) ?? null,
       logs: this.buildLogs(job), credits, videoUrl: project.videoUrl, renderId: job.renderId,
+      audioMeta,
     }
   }
 
@@ -365,6 +392,16 @@ export class ProductionService {
 
       await this.runStep(job, PipelineStep.TTS, async (onProgress) => {
         await assetService.generateVoiceForProject(job.projectId, (p) => void onProgress(p))
+        const audioMeta = await this.buildAudioMeta(job.projectId)
+        if (audioMeta.placeholderVoiceCount > 0) {
+          await this.emitEvent(job.projectId, 'progress', {
+            taskId: job.id,
+            step: PipelineStep.TTS,
+            status: 'running',
+            progress: 95,
+            message: `配音警告：${audioMeta.placeholderVoiceCount} 个分镜为静音占位，请配置 TTS_API_KEY`,
+          })
+        }
         await onProgress(100)
       })
 

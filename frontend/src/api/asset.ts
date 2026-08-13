@@ -20,7 +20,8 @@ export async function uploadAsset(file: File, data: { projectId: string; sceneId
     method: 'POST',
     url: '/assets/upload',
     data: form,
-    headers: { 'Content-Type': 'multipart/form-data' },
+    headers: { 'Content-Type': undefined },
+    timeout: 120000,
   })
 }
 

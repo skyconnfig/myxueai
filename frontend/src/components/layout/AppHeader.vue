@@ -14,7 +14,13 @@ import {
 
   Coins,
 
+  Folder,
+
+  Languages,
+
   ListTodo,
+
+  Moon,
 
   Play,
 
@@ -28,6 +34,8 @@ import {
 
   CircleStop,
 
+  Sun,
+
   Trash2,
 
   Tv,
@@ -36,9 +44,11 @@ import {
 
 } from 'lucide-vue-next'
 
+import { usePreferences } from '@/composables/usePreferences'
 import { useStudioStore } from '@/stores/studio'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useAuthStore } from '@/stores/auth'
+import { useProjectStore } from '@/stores/project'
 
 import type { VideoRatio } from '@/types'
 
@@ -71,6 +81,8 @@ const message = useMessage()
 const studioStore = useStudioStore()
 const workspaceStore = useWorkspaceStore()
 const authStore = useAuthStore()
+const projectStore = useProjectStore()
+const { t, toggleTheme, toggleLang, isDark } = usePreferences()
 const showDropdown = ref(false)
 const showTaskPanel = ref(false)
 const taskBusyId = ref<string | null>(null)
@@ -78,7 +90,33 @@ const taskBusyId = ref<string | null>(null)
 onMounted(() => {
   void workspaceStore.loadSummary()
   void authStore.init()
+  void projectStore.loadProjects()
 })
+
+const headerProjects = computed(() =>
+  projectStore.projects.map((p) => ({
+    id: p.id,
+    name: p.name,
+    category: p.style ?? '未分类',
+    sceneCount: p.sceneCount ?? 0,
+  })),
+)
+
+const breadcrumbLabel = computed(() => {
+  const name = String(route.name ?? '')
+  if (name === 'dashboard') return ''
+  if (['video-plan', 'production', 'video-director'].includes(name)) return t('header.workspace')
+  if (name === 'create-video') return t('nav.studio')
+  if (name === 'skills-marketplace') return t('nav.skills')
+  if (name === 'templates') return t('nav.templates')
+  if (name === 'settings') return t('nav.settings')
+  if (name === 'assets') return t('nav.assets')
+  if (name === 'analytics') return t('nav.analytics')
+  if (name === 'publish') return t('nav.publish')
+  return t('dash.title')
+})
+
+const showBreadcrumb = computed(() => Boolean(breadcrumbLabel.value))
 
 const taskBadgeCount = computed(() => workspaceStore.runningCount + workspaceStore.queueCount)
 
@@ -178,6 +216,15 @@ const currentProject = computed(() => {
 
   if (id?.startsWith('demo')) return studioStore.getProjectById(id)
 
+  const fromApi = projectStore.projects.find((p) => p.id === id)
+  if (fromApi) {
+    return {
+      id: fromApi.id,
+      name: fromApi.name,
+      category: fromApi.style ?? '未分类',
+    }
+  }
+
   return studioStore.currentProject
 
 })
@@ -242,7 +289,14 @@ function selectProject(id: string) {
 
 
 
-      <div class="h-4 w-px bg-border hidden sm:block" />
+      <div v-if="showBreadcrumb" class="h-4 w-px bg-border hidden sm:block" />
+
+      <div v-if="showBreadcrumb" class="hidden md:flex items-center gap-2 text-sm text-muted font-medium min-w-0">
+        <Folder class="w-4 h-4 text-accent-blue shrink-0" />
+        <span class="truncate">{{ breadcrumbLabel }}</span>
+      </div>
+
+      <div v-if="showBreadcrumb" class="h-4 w-px bg-border hidden lg:block" />
 
 
 
@@ -300,7 +354,7 @@ function selectProject(id: string) {
 
             <button
 
-              v-for="proj in studioStore.projects"
+              v-for="proj in headerProjects"
 
               :key="proj.id"
 
@@ -332,7 +386,7 @@ function selectProject(id: string) {
 
                 <div class="text-[11px] text-muted mt-0.5 truncate">
 
-                  {{ proj.category }} · {{ proj.scenes.length }} 镜头
+                  {{ proj.category }} · {{ proj.sceneCount }} 镜头
 
                 </div>
 
@@ -411,6 +465,27 @@ function selectProject(id: string) {
 
 
     <div class="flex items-center gap-2 shrink-0">
+
+      <div class="hidden sm:flex items-center bg-surface border border-border rounded-lg p-0.5">
+        <button
+          type="button"
+          class="btn-soft !h-7 !w-7 !p-0 !rounded-md !border-0"
+          :title="t('settings.lang')"
+          @click="toggleLang()"
+        >
+          <Languages class="w-3.5 h-3.5 text-muted" />
+        </button>
+        <div class="w-px h-4 bg-border" />
+        <button
+          type="button"
+          class="btn-soft !h-7 !w-7 !p-0 !rounded-md !border-0"
+          :title="t('settings.theme')"
+          @click="toggleTheme()"
+        >
+          <Sun v-if="isDark" class="w-3.5 h-3.5 text-muted" />
+          <Moon v-else class="w-3.5 h-3.5 text-muted" />
+        </button>
+      </div>
 
       <div class="hidden md:inline-flex btn-soft !h-8 !px-2.5 !rounded-lg !text-[11px] !font-normal pointer-events-none">
 

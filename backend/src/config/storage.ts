@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { config } from './index.js'
 
-const subdirs = ['uploads', 'images', 'audio', 'renders', 'compose', 'temp', 'footage', 'skills'] as const
+const subdirs = ['uploads', 'images', 'audio', 'renders', 'compose', 'temp', 'footage', 'skills', 'settings'] as const
 
 export const storagePaths = {
   root: config.storagePath,

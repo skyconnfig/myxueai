@@ -1,4 +1,5 @@
-import { request } from './http'
+import http, { request } from './http'
+import type { ApiResponse } from '@/types'
 import type { AgentPlan, SkillDefinition, SkillMarketplaceListing } from '@xueai/shared'
 
 export interface MarketplaceCatalog {
@@ -110,6 +111,50 @@ export function uploadSkill(payload: {
     method: 'POST',
     data: payload,
   })
+}
+
+export interface SkillPackageInstallResponse {
+  packageDir: string
+  installed: SkillDefinition[]
+  installedIds: string[]
+  skipped: string[]
+  errors: Array<{ path: string; message: string }>
+  total: number
+}
+
+export async function uploadSkillPackage(payload: {
+  archive?: File
+  files?: File[]
+  author?: string
+  summary?: string
+}) {
+  const form = new FormData()
+  if (payload.author) form.append('author', payload.author)
+  if (payload.summary) form.append('summary', payload.summary)
+
+  if (payload.archive) {
+    form.append('archive', payload.archive)
+  } else if (payload.files?.length) {
+    for (const file of payload.files) {
+      const rel =
+        (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name
+      form.append('files', file, rel)
+    }
+  } else {
+    throw new Error('请选择 ZIP 压缩包或 Skill 文件夹')
+  }
+
+  const response = await http.post<ApiResponse<SkillPackageInstallResponse>>(
+    '/skills/upload-package',
+    form,
+    {
+      timeout: 120000,
+      headers: {
+        'Content-Type': undefined,
+      },
+    },
+  )
+  return response.data.data
 }
 
 export function deleteSkill(id: string) {
