@@ -52,13 +52,79 @@ function shouldSkipPath(relativePath: string): boolean {
 
 function isSkillDefinitionPath(relativePath: string): boolean {
   const ext = path.extname(relativePath).toLowerCase()
-  if (!SKILL_EXTENSIONS.has(ext)) return false
-  const base = path.basename(relativePath).toLowerCase()
-  if (base === 'catalog.yaml' || base === 'catalog.yml' || base === 'catalog.json') return false
-  return true
+  if (SKILL_EXTENSIONS.has(ext)) {
+    const base = path.basename(relativePath).toLowerCase()
+    if (base === 'catalog.yaml' || base === 'catalog.yml' || base === 'catalog.json') return false
+    return true
+  }
+  return path.basename(relativePath).toLowerCase() === 'skill.md'
+}
+
+function slugifySkillId(input: string): string {
+  const slug = input
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  return slug || 'imported-skill'
+}
+
+function parseSkillMd(buffer: Buffer, relativePath: string): unknown | null {
+  const text = buffer.toString('utf8')
+  if (!text.startsWith('---')) return null
+
+  const end = text.indexOf('\n---', 3)
+  if (end < 0) return null
+
+  let frontmatter: Record<string, unknown>
+  try {
+    frontmatter = parseYaml(text.slice(3, end)) as Record<string, unknown>
+  } catch {
+    return null
+  }
+
+  const name = typeof frontmatter.name === 'string' ? frontmatter.name.trim() : ''
+  const description = typeof frontmatter.description === 'string' ? frontmatter.description.trim() : ''
+  if (!name || !description) return null
+
+  const folderName = path.basename(path.dirname(relativePath.replace(/\\/g, '/')))
+  const id = `user.${slugifySkillId(folderName || name)}`
+
+  return {
+    id,
+    kind: 'hook',
+    name,
+    description,
+    version: '1.0.0',
+    trigger: {
+      keywords: [name, folderName].filter(Boolean),
+      tags: ['user', 'imported', 'skill-md'],
+      matchMode: 'any',
+    },
+    rules: {
+      priority: 50,
+      mergeStrategy: 'deep-merge',
+      importedFrom: relativePath,
+      skillMdBody: text.slice(end + 4).trim().slice(0, 4000),
+    },
+    components: ['TitleCard'],
+    parameters: {},
+    examples: [
+      {
+        name: 'default',
+        input: { topic: name },
+        output: { beat: { role: 'hook' } },
+      },
+    ],
+  }
 }
 
 function parseSkillBuffer(buffer: Buffer, relativePath: string): unknown {
+  if (path.basename(relativePath).toLowerCase() === 'skill.md') {
+    const fromMd = parseSkillMd(buffer, relativePath)
+    if (fromMd) return fromMd
+    throw new Error('SKILL.md frontmatter 无效，需包含 name 与 description')
+  }
+
   const text = buffer.toString('utf8')
   const ext = path.extname(relativePath).toLowerCase()
   if (ext === '.json') return JSON.parse(text) as unknown
@@ -144,11 +210,11 @@ export class SkillPackageService {
       throw new AppError(
         400,
         'NO_SKILL_DEFINITION',
-        '未识别到 Skill 定义文件，请确保包内包含 .yaml / .yml / .json 格式的 Skill 配置',
+        '未识别到 Skill 定义文件，请确保包内包含 SKILL.md、.yaml、.yml 或 .json 格式的 Skill 配置',
       )
     }
 
-    await skillManager.ensureLoaded()
+    await skillManager.ensureLoaded({ reload: true, strict: false })
     const installed: SkillDefinition[] = []
     const skipped: string[] = []
     const errors: Array<{ path: string; message: string }> = []
@@ -157,8 +223,11 @@ export class SkillPackageService {
       let raw: unknown
       try {
         raw = parseSkillBuffer(file.buffer, file.relativePath)
-      } catch {
-        errors.push({ path: file.relativePath, message: '文件格式无效，无法解析 YAML/JSON' })
+      } catch (err) {
+        errors.push({
+          path: file.relativePath,
+          message: err instanceof Error ? err.message : '文件格式无效，无法解析',
+        })
         continue
       }
 
@@ -186,11 +255,12 @@ export class SkillPackageService {
 
       const existing = skillManager.getSkill(skill.id)
       if (existing && (existing.rules.source as string | undefined) !== 'user_upload') {
-        errors.push({
-          path: file.relativePath,
-          message: `Skill id "${skill.id}" 已被系统占用`,
-        })
-        continue
+        const safeId = `${skill.id}.import-${Date.now()}`
+        skill = {
+          ...skill,
+          id: safeId,
+          name: `${skill.name} (导入)`,
+        }
       }
 
       const payload = {

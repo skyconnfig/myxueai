@@ -147,12 +147,7 @@ export async function uploadSkillPackage(payload: {
   const response = await http.post<ApiResponse<SkillPackageInstallResponse>>(
     '/skills/upload-package',
     form,
-    {
-      timeout: 120000,
-      headers: {
-        'Content-Type': undefined,
-      },
-    },
+    { timeout: 120000 },
   )
   return response.data.data
 }

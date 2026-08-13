@@ -182,16 +182,18 @@ export const skillsController = {
   },
 
   uploadPackage: [
-    skillUpload.fields([
-      { name: 'archive', maxCount: 1 },
-      { name: 'files', maxCount: 200 },
-    ]),
+    skillUpload.any(),
     async (req: Request, res: Response, next: NextFunction) => {
       try {
         const meta = packageUploadMetaSchema.parse(req.body)
-        const files = req.files as { archive?: Express.Multer.File[]; files?: Express.Multer.File[] } | undefined
-        const archive = files?.archive?.[0]
-        const folderFiles = files?.files ?? []
+        const allFiles = (req.files as Express.Multer.File[] | undefined) ?? []
+        const archive =
+          allFiles.find((f) => f.fieldname === 'archive') ??
+          allFiles.find((f) => f.fieldname === 'file' && /\.zip$/i.test(f.originalname)) ??
+          allFiles.find((f) => /\.zip$/i.test(f.originalname))
+        const folderFiles = allFiles.filter(
+          (f) => f !== archive && (f.fieldname === 'files' || !/\.zip$/i.test(f.originalname)),
+        )
 
         let entries
         if (archive) {

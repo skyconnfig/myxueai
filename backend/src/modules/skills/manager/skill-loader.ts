@@ -39,7 +39,7 @@ async function readSkillFile(filePath: string): Promise<unknown> {
   return parseYaml(text) as unknown
 }
 
-async function walkSkillDir(dir: string, files: string[]) {
+async function walkSkillDir(dir: string, files: string[], skipDirNames: Set<string> = new Set()) {
   let entries: Array<{ name: string; isDirectory: () => boolean; isFile: () => boolean }>
   try {
     entries = await fs.readdir(dir, { withFileTypes: true })
@@ -50,7 +50,8 @@ async function walkSkillDir(dir: string, files: string[]) {
     const full = path.join(dir, entry.name)
     if (entry.name.startsWith('_') || entry.name.startsWith('.')) continue
     if (entry.isDirectory()) {
-      await walkSkillDir(full, files)
+      if (skipDirNames.has(entry.name.toLowerCase())) continue
+      await walkSkillDir(full, files, skipDirNames)
     } else if (entry.isFile() && SKILL_EXTENSIONS.has(path.extname(entry.name).toLowerCase())) {
       files.push(full)
     }
@@ -82,7 +83,7 @@ async function collectSkillFiles(
 
   if (includeUser) {
     const userFiles: string[] = []
-    await walkSkillDir(userDir, userFiles)
+    await walkSkillDir(userDir, userFiles, new Set(['packages']))
     for (const f of userFiles) {
       out.push({ path: f, origin: 'user', relativeRoot: userDir })
     }
